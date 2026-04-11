@@ -1,0 +1,244 @@
+:root {
+  --fallout-bg: #0a0f14;
+  --fallout-text: #ffcc00;
+  --fallout-accent: #ff3c00;
+  --fallout-border: rgba(255, 204, 0, 0.4);
+  --fallout-glow: 0 0 8px rgba(255, 204, 0, 0.6);
+  --fallout-dim: rgba(255, 204, 0, 0.1);
+  --font-mono: 'Courier New', Courier, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--fallout-bg);
+  color: var(--fallout-text);
+  font-family: var(--font-mono);
+  overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* CRT SCANLINES EFFECT */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 1000;
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
+}
+
+body::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 1;
+  z-index: 999;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.27861; }
+  5% { opacity: 0.34769; }
+  10% { opacity: 0.23604; }
+  15% { opacity: 0.90626; }
+  20% { opacity: 0.18128; }
+  25% { opacity: 0.83891; }
+  30% { opacity: 0.65583; }
+  35% { opacity: 0.57807; }
+  40% { opacity: 0.26559; }
+  45% { opacity: 0.84693; }
+  50% { opacity: 0.96019; }
+  55% { opacity: 0.08523; }
+  60% { opacity: 0.71056; }
+  65% { opacity: 0.73437; }
+  70% { opacity: 0.28574; }
+  75% { opacity: 0.96387; }
+  80% { opacity: 0.22603; }
+  85% { opacity: 0.20441; }
+  90% { opacity: 0.31035; }
+  95% { opacity: 0.67933; }
+  100% { opacity: 1; }
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+/* TERMINAL COMPONENTS */
+.terminal-card {
+  background-color: rgba(10, 15, 20, 0.8);
+  border: 2px solid var(--fallout-border);
+  box-shadow: var(--fallout-glow);
+  padding: 1.5rem;
+  position: relative;
+  margin-bottom: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.terminal-card::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border: 1px solid var(--fallout-border);
+  pointer-events: none;
+}
+
+.terminal-card:hover {
+  border-color: var(--fallout-text);
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.8);
+}
+
+.header-label {
+  display: inline-block;
+  background-color: var(--fallout-text);
+  color: var(--fallout-bg);
+  padding: 0.25rem 0.75rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+h1, h2, h3 {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 1rem;
+  text-shadow: var(--fallout-glow);
+}
+
+button {
+  background: transparent;
+  color: var(--fallout-text);
+  border: 2px solid var(--fallout-text);
+  padding: 0.75rem 1.5rem;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  background-color: var(--fallout-text);
+  color: var(--fallout-bg);
+  box-shadow: var(--fallout-glow);
+}
+
+button:active {
+  transform: translateY(2px);
+}
+
+button.danger {
+  color: var(--fallout-accent);
+  border-color: var(--fallout-accent);
+}
+
+button.danger:hover {
+  background-color: var(--fallout-accent);
+  color: var(--fallout-bg);
+  box-shadow: 0 0 12px var(--fallout-accent);
+}
+
+input {
+  background: var(--fallout-dim);
+  border: none;
+  border-bottom: 2px solid var(--fallout-border);
+  color: var(--fallout-text);
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+input:focus {
+  border-color: var(--fallout-text);
+  background: rgba(255, 204, 0, 0.05);
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.col-12 { grid-column: span 12; }
+.col-8 { grid-column: span 8; }
+.col-4 { grid-column: span 4; }
+
+@media (max-width: 768px) {
+  .col-8, .col-4 { grid-column: span 12; }
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  background-color: var(--fallout-dim);
+}
+
+.status-dot.active {
+  background-color: var(--fallout-text);
+  box-shadow: var(--fallout-glow);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.log-console {
+  font-size: 0.85rem;
+  height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--fallout-border);
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.log-entry {
+  margin-bottom: 0.25rem;
+  border-left: 2px solid var(--fallout-border);
+  padding-left: 0.5rem;
+}
+
+.log-entry.success { color: var(--fallout-text); }
+.log-entry.error { color: var(--fallout-accent); }
+.log-entry.info { color: rgba(255, 204, 0, 0.6); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--fallout-bg); }
+::-webkit-scrollbar-thumb { background: var(--fallout-border); }
+::-webkit-scrollbar-thumb:hover { background: var(--fallout-text); }
