@@ -1,24 +1,68 @@
-import { Server, TransactionBuilder, Networks, Operation, Asset, BASE_FEE } from '@stellar/stellar-sdk';
-import { isConnected, getAddress, signTransaction } from '@stellar/freighter-api';
+import * as StellarSdk from '@stellar/stellar-sdk';
 
 // Initialize the Horizon server for Stellar Testnet
-const server = new Server('https://horizon-testnet.stellar.org');
+const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
 
 /**
- * Checks if the Freighter wallet is installed and connected.
+ * Connects to the Freighter wallet extension.
+ * Uses requestAccess() to trigger the authorization popup,
+ * then falls back to getAddress() if already authorized.
  */
 export const connectWallet = async () => {
   try {
-    const connected = await isConnected();
-    if (!connected) {
-      throw new Error("Freighter wallet not detected. Please install the extension.");
+    const freighterApi = await import('@stellar/freighter-api');
+
+    // Step 1: Check if Freighter extension is installed
+    let isInstalled = false;
+    try {
+      const connResult = await freighterApi.isConnected();
+      // v6 returns { isConnected: boolean }, older returns boolean
+      isInstalled = typeof connResult === 'object'
+        ? connResult?.isConnected === true
+        : connResult === true;
+    } catch {
+      isInstalled = false;
     }
-    
-    const publicKey = await getAddress();
+
+    if (!isInstalled) {
+      throw new Error(
+        "Freighter wallet not detected. Please install the Freighter browser extension from freighter.app and reload the page."
+      );
+    }
+
+    // Step 2: Request access — this triggers the Freighter popup
+    // for the user to authorize this dApp
+    let publicKey = '';
+
+    try {
+      const accessResult = await freighterApi.requestAccess();
+      // v6 returns { address: string }, older returns string
+      publicKey = typeof accessResult === 'string'
+        ? accessResult
+        : accessResult?.address || '';
+    } catch (accessErr) {
+      console.warn('requestAccess failed, trying getAddress:', accessErr);
+    }
+
+    // Step 3: Fallback — if requestAccess didn't return a key,
+    // try getAddress (works if user previously authorized)
     if (!publicKey) {
-      throw new Error("Could not retrieve public key. Please unlock Freighter.");
+      try {
+        const addressResult = await freighterApi.getAddress();
+        publicKey = typeof addressResult === 'string'
+          ? addressResult
+          : addressResult?.address || '';
+      } catch (addrErr) {
+        console.warn('getAddress also failed:', addrErr);
+      }
     }
-    
+
+    if (!publicKey || typeof publicKey !== 'string' || !publicKey.startsWith('G')) {
+      throw new Error(
+        "Could not retrieve public key. Make sure Freighter is unlocked, set to TESTNET, and you click 'Allow' on the popup."
+      );
+    }
+
     return publicKey;
   } catch (error) {
     console.error("Connection Error:", error);
@@ -37,7 +81,7 @@ export const getXlmBalance = async (publicKey) => {
   } catch (error) {
     console.error("Fetch Balance Error:", error);
     if (error.response && error.response.status === 404) {
-      return "0.0000000 (Account not funded)";
+      return "0.0000000 (Not funded)";
     }
     throw error;
   }
@@ -50,31 +94,29 @@ export const sendPayment = async (sourcePublicKey, destinationId, amount, onLog)
   try {
     onLog("INITIALIZING LINK...", "info");
     
-    // 1. Fetch source account details
     const sourceAccount = await server.loadAccount(sourcePublicKey);
     onLog("ACCOUNT SYNCED.", "success");
 
-    // 2. Build the transaction
-    const transaction = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: Networks.TESTNET,
+    const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: StellarSdk.Networks.TESTNET,
     })
       .addOperation(
-        Operation.payment({
+        StellarSdk.Operation.payment({
           destination: destinationId,
-          asset: Asset.native(),
+          asset: StellarSdk.Asset.native(),
           amount: amount.toString(),
         })
       )
-      .setTimeout(60) // 1 minute timeout
+      .setTimeout(60)
       .build();
 
     onLog("ENCRYPTING PAYLOAD...", "info");
     const xdr = transaction.toXDR();
 
-    // 3. Sign with Freighter
     onLog("AWAITING AGENT SIGNATURE...", "info");
-    const signResult = await signTransaction(xdr, {
+    const freighterApi = await import('@stellar/freighter-api');
+    const signResult = await freighterApi.signTransaction(xdr, {
       network: "TESTNET",
     });
 
@@ -82,12 +124,12 @@ export const sendPayment = async (sourcePublicKey, destinationId, amount, onLog)
       throw new Error(signResult.error);
     }
 
-    const signedXdr = signResult.signedTxXdr;
+    const signedXdr = signResult.signedTxXdr || signResult;
     onLog("SIGNATURE VERIFIED.", "success");
 
-    // 4. Submit to the network
     onLog("UPLOADING TO STELLAR NETWORK...", "info");
-    const response = await server.submitTransaction(signedXdr);
+    const tx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, StellarSdk.Networks.TESTNET);
+    const response = await server.submitTransaction(tx);
     
     onLog(`TRANSACTION COMPLETE. HASH: ${response.hash.substring(0, 16)}...`, "success");
     return response;

@@ -1,55 +1,119 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Component } from 'react';
 import { connectWallet, getXlmBalance, sendPayment, getExplorerUrl } from './utils/stellar';
 import './index.css';
 
+/* ══════════════════════════════════════════════════════════════
+   ERROR BOUNDARY
+   ══════════════════════════════════════════════════════════════ */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('Terminal crash:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell">
+          <div className="bg-layer">
+            <div className="bg-image" />
+            <div className="bg-gradients" />
+            <div className="bg-vignette" />
+          </div>
+          <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+            <div className="card" style={{ maxWidth: 520, textAlign: 'center', padding: '3rem 2rem' }}>
+              <div className="card-corner-br" />
+              <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem', fontFamily: 'var(--font-display)' }}>
+                ⚠ CRITICAL SYSTEM FAILURE
+              </h1>
+              <p style={{ color: 'var(--text-body)', fontSize: '0.82rem', marginBottom: '2rem', lineHeight: 1.7 }}>
+                {this.state.error?.message || 'An unrecoverable error occurred in the terminal subsystem.'}
+              </p>
+              <button className="btn" onClick={() => this.setState({ hasError: false, error: null })}>
+                REBOOT TERMINAL
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN APPLICATION
+   ══════════════════════════════════════════════════════════════ */
 function App() {
   const [address, setAddress] = useState('');
   const [balance, setBalance] = useState('0.0000000');
   const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([{ msg: 'SYSTEM READY. AWAITING INPUT...', type: 'info', time: new Date().toLocaleTimeString() }]);
-  const [destAddress, setDestAddress] = useState('');
-  const [amount, setAmount] = useState('');
+  const [logs, setLogs] = useState([
+    { msg: 'TERMINAL ONLINE. AWAITING OPERATOR INPUT...', type: 'info', ts: new Date().toLocaleTimeString() },
+  ]);
+  const [dest, setDest] = useState('');
+  const [amt, setAmt] = useState('');
   const [txHash, setTxHash] = useState('');
-  
-  const logEndRef = useRef(null);
 
-  // Auto-scroll logs
+  const logEnd = useRef(null);
+
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    logEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  const addLog = (msg, type = 'info') => {
-    setLogs((prev) => [...prev, { msg, type, time: new Date().toLocaleTimeString() }]);
+  const log = (msg, type = 'info') => {
+    setLogs(p => [...p, { msg, type, ts: new Date().toLocaleTimeString() }]);
   };
 
+  /* ── Wallet Actions ───────────────────────────────────────── */
   const handleConnect = async () => {
     setLoading(true);
     try {
-      addLog('INITIATING WALLET LINK...', 'info');
-      const pubKey = await connectWallet();
-      setAddress(pubKey);
-      addLog(`LINK ESTABLISHED: ${pubKey.substring(0, 8)}...${pubKey.substring(pubKey.length - 8)}`, 'success');
-      
-      // Fetch balance immediately after connecting
-      const bal = await getXlmBalance(pubKey);
-      setBalance(bal);
-    } catch (error) {
-      addLog(`LINK FAILURE: ${error.message}`, 'error');
+      log('INITIATING SECURE UPLINK...', 'info');
+      const key = await connectWallet();
+      if (!key || typeof key !== 'string') throw new Error('Invalid key from wallet.');
+      setAddress(key);
+      log(`UPLINK OK → ${key.substring(0, 6)}...${key.slice(-6)}`, 'ok');
+
+      try {
+        const b = await getXlmBalance(key);
+        setBalance(b);
+        log(`RESOURCES: ${parseFloat(b).toFixed(4)} XLM`, 'ok');
+      } catch (e) {
+        log(`BALANCE WARN: ${e?.message || 'unavailable'}`, 'err');
+      }
+    } catch (err) {
+      log(`UPLINK FAILED → ${err instanceof Error ? err.message : String(err)}`, 'err');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefreshBalance = async () => {
+  const handleDisconnect = () => {
+    setAddress('');
+    setBalance('0.0000000');
+    setTxHash('');
+    log('UPLINK SEVERED.', 'info');
+  };
+
+  const handleRefresh = async () => {
     if (!address) return;
     setLoading(true);
     try {
-      addLog('SYNCING ACCOUNT DATA...', 'info');
-      const bal = await getXlmBalance(address);
-      setBalance(bal);
-      addLog('SYNC COMPLETE.', 'success');
-    } catch (error) {
-      addLog(`SYNC ERROR: ${error.message}`, 'error');
+      log('SYNCING...', 'info');
+      const b = await getXlmBalance(address);
+      setBalance(b);
+      log(`SYNC OK: ${parseFloat(b).toFixed(4)} XLM`, 'ok');
+    } catch (e) {
+      log(`SYNC ERR: ${e?.message || 'unknown'}`, 'err');
     } finally {
       setLoading(false);
     }
@@ -57,139 +121,219 @@ function App() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!address) {
-      addLog('ERROR: CONNECTION REQUIRED.', 'error');
-      return;
-    }
-    if (!destAddress || !amount) {
-      addLog('ERROR: MISSING TARGET OR PAYLOAD.', 'error');
-      return;
-    }
+    if (!address) { log('ERROR: UPLINK REQUIRED.', 'err'); return; }
+    if (!dest || !amt) { log('ERROR: MISSING FIELDS.', 'err'); return; }
 
     setLoading(true);
     setTxHash('');
     try {
-      const result = await sendPayment(address, destAddress, amount, (msg, type) => addLog(msg, type));
-      setTxHash(result.hash);
-      handleRefreshBalance(); // Refresh balance after success
-      setDestAddress('');
-      setAmount('');
-    } catch (error) {
-      // Error handled inside sendPayment via logs
+      const res = await sendPayment(address, dest, amt, (m, t) => log(m, t === 'success' ? 'ok' : t));
+      setTxHash(res.hash);
+      handleRefresh();
+      setDest('');
+      setAmt('');
+    } catch {
+      // errors logged internally
     } finally {
       setLoading(false);
     }
   };
 
+  /* ── Render ───────────────────────────────────────────────── */
   return (
-    <div className="app-container">
-      <header style={{ marginBottom: '2rem', borderBottom: '2px solid var(--fallout-border)', paddingBottom: '1rem' }}>
-        <h1 style={{ fontSize: '2.5rem', margin: 0 }}>VAULT-TEC STELLAR TERMINAL</h1>
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem' }}>
-          <span className={`status-dot ${address ? 'active' : ''}`}></span>
-          <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-            {address ? `CONNECTED TO TESTNET` : 'OFFLINE - AWAITING LINK'}
-          </span>
-        </div>
-      </header>
-
-      <div className="bento-grid">
-        {/* WALLET & STATUS */}
-        <div className="terminal-card col-4">
-          <div className="header-label">Agent Status</div>
-          <div style={{ marginTop: '1rem' }}>
-            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>PUBLIC KEY:</p>
-            <p style={{ wordBreak: 'break-all', fontSize: '0.9rem', marginBottom: '1.5rem', color: address ? 'var(--fallout-text)' : 'var(--fallout-border)' }}>
-              {address || 'UNIDENTIFIED'}
-            </p>
-            {!address ? (
-              <button onClick={handleConnect} disabled={loading} style={{ width: '100%' }}>
-                {loading ? 'CONNECTING...' : 'LINK FREIGHTER'}
-              </button>
-            ) : (
-              <button className="danger" onClick={() => { setAddress(''); addLog('LINK TERMINATED.', 'info'); }} style={{ width: '100%' }}>
-                DISCONNECT
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* BALANCE */}
-        <div className="terminal-card col-4" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div className="header-label">Resource Levels</div>
-          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-            <h3 style={{ fontSize: '3rem', margin: '0.5rem 0', color: '#fff' }}>{parseFloat(balance).toFixed(2)}</h3>
-            <p style={{ fontSize: '1.2rem', color: 'var(--fallout-text)' }}>XLM</p>
-          </div>
-          <button onClick={handleRefreshBalance} disabled={loading || !address} style={{ marginTop: 'auto' }}>
-            REFRESH SYNC
-          </button>
-        </div>
-
-        {/* TRANSACTION LOGS */}
-        <div className="terminal-card col-4">
-          <div className="header-label">Diagnostic Logs</div>
-          <div className="log-console">
-            {logs.map((log, idx) => (
-              <div key={idx} className={`log-entry ${log.type}`}>
-                <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>[{log.time}]</span> {log.msg}
-              </div>
-            ))}
-            <div ref={logEndRef} />
-          </div>
-        </div>
-
-        {/* PAYMENT FORM */}
-        <div className="terminal-card col-8">
-          <div className="header-label">Data Transfer Protocol</div>
-          <form onSubmit={handleSend} style={{ marginTop: '1rem' }}>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>DESTINATION ADDRESS</label>
-              <input 
-                placeholder="GA... (Stellar Public Key)" 
-                value={destAddress}
-                onChange={(e) => setDestAddress(e.target.value)}
-                required
-              />
-            </div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>PAYLOAD AMOUNT (XLM)</label>
-              <input 
-                type="number" 
-                step="0.0000001"
-                placeholder="0.00" 
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" disabled={loading || !address} style={{ width: '100%', fontSize: '1.2rem' }}>
-              {loading ? 'UPLOADING...' : 'INITIATE TRANSFER'}
-            </button>
-          </form>
-        </div>
-
-        {/* TRANSACTION SUCCESS */}
-        {txHash && (
-          <div className="terminal-card col-4" style={{ borderColor: 'var(--fallout-text)' }}>
-            <div className="header-label" style={{ backgroundColor: 'var(--fallout-text)', color: '#000' }}>Transfer Success</div>
-            <p style={{ fontSize: '0.9rem', margin: '1rem 0' }}>Payload successfully uploaded to Stellar Testnet.</p>
-            <p style={{ fontSize: '0.7rem', opacity: 0.6 }}>HASH: {txHash}</p>
-            <button 
-              onClick={() => window.open(getExplorerUrl(txHash), '_blank')}
-              style={{ width: '100%', marginTop: '1rem', padding: '0.5rem' }}
-            >
-              VIEW ON EXPLORER
-            </button>
-          </div>
-        )}
+    <div className="app-shell">
+      {/* Background layers */}
+      <div className="bg-layer">
+        <div className="bg-image" />
+        <div className="bg-gradients" />
+        <div className="bg-vignette" />
       </div>
 
-      <footer style={{ marginTop: '4rem', textAlign: 'center', opacity: 0.4, fontSize: '0.8rem', borderTop: '1px solid var(--fallout-border)', paddingTop: '1rem' }}>
-        PROPERTY OF VAULT-TEC INDUSTRIES © 2077 | STELLAR TESTNET NODE #42
+      <div className="app-container">
+        {/* ── HEADER ──────────────────────────────────────── */}
+        <header className="site-header">
+          <div className="header-top">
+            <div className="header-brand">
+              <div className="header-brand-row">
+                {/* Stellar Rocket Logo */}
+                <svg className="header-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="48" stroke="#ffc300" strokeWidth="2" fill="none" opacity="0.3"/>
+                  <path d="M74.4 32.8L25.7 55.4C24.3 56 24.3 58 25.7 58.6L33.5 62L74.4 43.2V32.8Z" fill="#ffc300"/>
+                  <path d="M74.4 43.2L33.5 62L36.8 63.5L74.4 46V43.2Z" fill="#ff6d00" opacity="0.7"/>
+                  <path d="M74.4 50.6L25.7 73.2C24.3 73.8 24.3 75.8 25.7 76.4L33.5 79.8L74.4 61V50.6Z" fill="#ffc300"/>
+                  <path d="M74.4 61L33.5 79.8L36.8 81.3L74.4 63.8V61Z" fill="#ff6d00" opacity="0.7"/>
+                  <circle cx="50" cy="50" r="3" fill="#ffc300" opacity="0.15"/>
+                </svg>
+                <div>
+                  <h1 className="site-title">Stellar Network</h1>
+                  <h1 className="site-title" style={{ fontSize: 'clamp(0.9rem, 2vw, 1.4rem)', opacity: 0.8 }}>Payment Terminal</h1>
+                </div>
+              </div>
+              <span className="site-subtitle">Decentralized XLM Operations</span>
+            </div>
+            <div className="header-badges">
+              <span className="badge badge--net">⬡ Testnet</span>
+              <span className="badge badge--warn">◈ Restricted</span>
+            </div>
+          </div>
+          <div className="header-status">
+            <span className={`dot ${address ? 'dot--on' : ''}`} />
+            <span className={`status-label ${address ? 'status-label--on' : ''}`}>
+              {address ? 'Uplink Active — Stellar Testnet' : 'Offline — Awaiting Secure Uplink'}
+            </span>
+          </div>
+        </header>
+
+        {/* ── TWO-COLUMN LAYOUT ─────────────────────────── */}
+        <div className="grid">
+
+          {/* ══ LEFT: Transfer Protocol (70%) ════════════════ */}
+          <div className="g-8 left-col enter">
+            <div className="card card--tall">
+              <div className="card-corner-br" />
+              <div className="card-tag">
+                <span className="card-tag__icon">⬡</span> Data Transfer Protocol
+              </div>
+              <div className="card-body">
+                <form onSubmit={handleSend}>
+                  <div className="input-group">
+                    <label className="field-label">Destination Address</label>
+                    <input
+                      className="input"
+                      placeholder="GA... (Stellar Public Key)"
+                      value={dest}
+                      onChange={e => setDest(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label className="field-label">Payload Amount (XLM)</label>
+                    <input
+                      className="input"
+                      type="number"
+                      step="0.0000001"
+                      placeholder="0.00"
+                      value={amt}
+                      onChange={e => setAmt(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label className="field-label">Memo (Optional)</label>
+                    <input
+                      className="input"
+                      placeholder="Transaction note..."
+                    />
+                  </div>
+                  <button className="btn btn--full" type="submit" disabled={loading || !address}>
+                    {loading ? <><span className="spinner" /> Processing...</> : 'Initiate Transfer'}
+                  </button>
+                </form>
+
+                {/* TX Success inline */}
+                {txHash && (
+                  <div className="tx-result enter">
+                    <div className="sep" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ color: 'var(--yellow)', fontSize: '1rem' }}>✦</span>
+                      <span className="field-label" style={{ margin: 0, color: 'var(--yellow)' }}>Transfer Complete</span>
+                    </div>
+                    <p className="tx-hash">HASH: {txHash}</p>
+                    <button
+                      className="btn btn--ghost btn--full"
+                      onClick={() => window.open(getExplorerUrl(txHash), '_blank')}
+                      style={{ marginTop: '0.75rem' }}
+                    >
+                      View on Explorer ↗
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ══ RIGHT: Stacked Cards (30%) ═══════════════════ */}
+          <div className="g-4 right-stack enter">
+
+            {/* ▸ Connect Wallet */}
+            <div className="card card--compact">
+              <div className="card-corner-br" />
+              <div className="card-tag">
+                <span className="card-tag__icon">◈</span> Wallet
+              </div>
+              <div className="card-body">
+                <p className="field-label">Public Key</p>
+                <p className={`field-value ${!address ? 'field-value--empty' : ''}`} style={{ marginBottom: '0.75rem', fontSize: '0.72rem' }}>
+                  {address ? `${address.substring(0, 12)}...${address.slice(-8)}` : '— Not Connected —'}
+                </p>
+                {!address ? (
+                  <button className="btn btn--full" onClick={handleConnect} disabled={loading}>
+                    {loading && <span className="spinner" />}
+                    {loading ? 'Connecting...' : 'Link Freighter'}
+                  </button>
+                ) : (
+                  <button className="btn btn--danger btn--full" onClick={handleDisconnect}>
+                    Disconnect
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ▸ Balance */}
+            <div className="card card--compact">
+              <div className="card-corner-br" />
+              <div className="card-tag">
+                <span className="card-tag__icon">◆</span> Balance
+              </div>
+              <div className="card-body" style={{ textAlign: 'center' }}>
+                <div className="balance-num" style={{ fontSize: '2rem' }}>{parseFloat(balance).toFixed(2)}</div>
+                <div className="balance-unit" style={{ fontSize: '0.65rem', letterSpacing: '6px' }}>XLM</div>
+                <div className="balance-bar" />
+                <button className="btn btn--ghost btn--full" onClick={handleRefresh} disabled={loading || !address} style={{ marginTop: '0.75rem' }}>
+                  {loading && address ? <><span className="spinner" /> Syncing...</> : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            {/* ▸ Diagnostics */}
+            <div className="card card--compact card--diag">
+              <div className="card-corner-br" />
+              <div className="card-tag">
+                <span className="card-tag__icon">▣</span> Diagnostics
+              </div>
+              <div className="card-body">
+                <div className="console console--short">
+                  {logs.map((l, i) => (
+                    <div key={i} className={`console-line console-line--${l.type === 'success' || l.type === 'ok' ? 'ok' : l.type === 'error' || l.type === 'err' ? 'err' : 'info'}`}>
+                      <span className="console-ts">[{l.ts}]</span>{l.msg}
+                    </div>
+                  ))}
+                  <div ref={logEnd} />
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* ── FOOTER ────────────────────────────────────────── */}
+      <footer className="site-footer">
+        <p className="footer-line">
+          Stellar Network Payment Terminal &nbsp;│&nbsp; Testnet Node #42 &nbsp;│&nbsp; Terminal v3.1.7
+        </p>
       </footer>
     </div>
   );
 }
 
-export default App;
+/* ══════════════════════════════════════════════════════════════ */
+function WrappedApp() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default WrappedApp;
