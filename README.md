@@ -86,25 +86,31 @@ The app will be available at **http://localhost:5173**
 
 After clicking "Link Freighter" and approving the connection, the wallet public key is displayed and the status indicator turns active.
 
-![Wallet Connected](./screenshots/wallet-connected.png)
+<img width="587" height="278" alt="Screenshot 2026-04-12 115746" src="https://github.com/user-attachments/assets/eed6ed2a-eb3d-4436-abea-8a2ac5449a61" />
 
 ### Balance Displayed
 
 The balance card shows your current XLM balance in large Orbitron font, fetched directly from the Stellar Horizon Testnet API.
 
-![Balance Displayed](./screenshots/balance-displayed.png)
+<img width="620" height="270" alt="Screenshot 2026-04-12 115806" src="https://github.com/user-attachments/assets/81b9f8f1-8d98-4977-8e44-6981e9e26f93" />
+
 
 ### Successful Testnet Transaction
 
 After submitting a transfer, the transaction is signed via Freighter and submitted to the Stellar Testnet. A success confirmation appears with the transaction hash.
 
-![Transaction Success](./screenshots/transaction-success.png)
+<img width="865" height="391" alt="Screenshot 2026-04-12 120227" src="https://github.com/user-attachments/assets/a87ba249-0658-441f-85b0-641fc661c089" />
+
+<img width="1402" height="909" alt="Screenshot 2026-04-12 120753" src="https://github.com/user-attachments/assets/6d472179-0fdd-434d-a937-a8637f33e388" />
 
 ### Transaction Result
 
+<img width="1288" height="775" alt="Screenshot 2026-04-12 120811" src="https://github.com/user-attachments/assets/99ea2086-2f77-46dc-905d-09687c0897bb" />
+
 The completed transaction result shows the full hash and a link to view the transaction on Stellar Expert. The diagnostics panel logs every step of the process.
 
-![Transaction Result](./screenshots/transaction-result.png)
+
+
 
 ---
 
