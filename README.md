@@ -2,7 +2,7 @@
 
 A decentralized payment terminal for the **Stellar Testnet** built with React + Vite. Connect your [Freighter wallet](https://www.freighter.app/), view your XLM balance, and send payments — all through a dystopian-themed terminal interface.
 
-![Stellar Payment Terminal](./screenshots/wallet-connected.png)
+<img width="1870" height="958" alt="Screenshot 2026-04-12 121044" src="https://github.com/user-attachments/assets/23928d75-d48e-4dc9-9593-d4a35ed988a3" />
 
 ---
 
