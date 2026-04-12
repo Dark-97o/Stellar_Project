@@ -787,3 +787,165 @@ body::before {
 .flex-col { display: flex; flex-direction: column; }
 .text-center { text-align: center; }
 .gap-sm { gap: 0.5rem; }
+
+/* ── LAYOUT: SURVIVOR NETWORK (L2) ─────────────────── */
+.survivor-hub {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: calc(100vh - 250px);
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Sidebar Navigation */
+.nav-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(3, 8, 15, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 195, 0, 0.1);
+  padding: 1rem;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  color: #c8bfa8;
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+
+.nav-item:hover {
+  color: var(--yellow);
+  background: rgba(255, 195, 0, 0.05);
+}
+
+.nav-item--active {
+  color: var(--yellow);
+  background: rgba(255, 195, 0, 0.1);
+  border: 1px solid var(--yellow);
+  text-shadow: 0 0 10px rgba(255, 195, 0, 0.3);
+}
+
+.nav-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--orange);
+  box-shadow: 0 0 15px var(--orange);
+}
+
+/* Feature Views */
+.view-container {
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* 💠 PAYMENT TRACKER 💠 */
+.tracker-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+}
+
+.tracker-table th {
+  text-align: left;
+  padding: 0.75rem;
+  color: var(--yellow);
+  border-bottom: 2px solid rgba(255, 195, 0, 0.1);
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+.tracker-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255, 195, 0, 0.05);
+  color: var(--text-body);
+  font-family: var(--font-mono);
+}
+
+.status-tag {
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-tag--pending { background: rgba(255, 195, 0, 0.1); color: var(--yellow); border: 1px solid var(--yellow); }
+.status-tag--success { background: rgba(0, 255, 128, 0.1); color: #00ff80; border: 1px solid #00ff80; }
+.status-tag--failed { background: rgba(255, 61, 0, 0.1); color: var(--red); border: 1px solid var(--red); }
+
+/* 💠 CROWDFUNDING PROGRESS 💠 */
+.progress-meter {
+  height: 50px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 195, 0, 0.2);
+  position: relative;
+  margin: 2rem 0;
+  overflow: hidden;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--yellow));
+  box-shadow: 0 0 30px rgba(255, 133, 0, 0.4);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.progress-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  color: #fff;
+  font-weight: 900;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+
+/* 💠 LEADERBOARD 💠 */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 4px solid var(--yellow);
+  transition: all 0.3s ease;
+}
+
+.leaderboard-item:hover {
+  background: rgba(255, 195, 0, 0.05);
+  transform: translateX(10px);
+}
+
+.leaderboard-rank { font-size: 1.5rem; color: var(--yellow); font-family: var(--font-display); margin-right: 1.5rem; opacity: 0.8; }
+.leaderboard-addr { flex: 1; font-size: 0.8rem; color: #c8bfa8; font-family: var(--font-mono); }
+.leaderboard-amt { font-family: var(--font-display); color: var(--yellow); font-size: 1.1rem; }

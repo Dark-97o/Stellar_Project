@@ -1,140 +1,190 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 
 // Initialize the Horizon server for Stellar Testnet
-const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
+const horizonServer = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
+
+// Initialize Soroban RPC server for Testnet
+const rpcServer = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org');
+
+const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;
+export const RELIEF_ADDR = "GDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBMIHUCLRIA";
+
+/**
+ * Enhanced Error Types for Level 2
+ */
+export const ErrorTypes = {
+  USER_REJECTED: "SURVIVOR_REJECTED_LINK",
+  INSUFFICIENT_FUNDS: "INSUFFICIENT_RESOURCES",
+  UNFUNDED_ACCOUNT: "UPLINK_NOT_INITIALIZED",
+  CONTRACT_ERROR: "SMART_CONTRACT_REVERT",
+};
 
 /**
  * Connects to the Freighter wallet extension.
- * Uses requestAccess() to trigger the authorization popup,
- * then falls back to getAddress() if already authorized.
  */
 export const connectWallet = async () => {
   try {
     const freighterApi = await import('@stellar/freighter-api');
-
-    // Step 1: Check if Freighter extension is installed
-    let isInstalled = false;
-    try {
-      const connResult = await freighterApi.isConnected();
-      // v6 returns { isConnected: boolean }, older returns boolean
-      isInstalled = typeof connResult === 'object'
-        ? connResult?.isConnected === true
-        : connResult === true;
-    } catch {
-      isInstalled = false;
-    }
+    const isInstalled = await freighterApi.isConnected();
 
     if (!isInstalled) {
-      throw new Error(
-        "Freighter wallet not detected. Please install the Freighter browser extension from freighter.app and reload the page."
-      );
+      throw new Error("Freighter wallet not detected.");
     }
 
-    // Step 2: Request access — this triggers the Freighter popup
-    // for the user to authorize this dApp
-    let publicKey = '';
+    const accessResult = await freighterApi.requestAccess();
+    const publicKey = typeof accessResult === 'string' ? accessResult : accessResult?.address || '';
 
-    try {
-      const accessResult = await freighterApi.requestAccess();
-      // v6 returns { address: string }, older returns string
-      publicKey = typeof accessResult === 'string'
-        ? accessResult
-        : accessResult?.address || '';
-    } catch (accessErr) {
-      console.warn('requestAccess failed, trying getAddress:', accessErr);
-    }
-
-    // Step 3: Fallback — if requestAccess didn't return a key,
-    // try getAddress (works if user previously authorized)
-    if (!publicKey) {
-      try {
-        const addressResult = await freighterApi.getAddress();
-        publicKey = typeof addressResult === 'string'
-          ? addressResult
-          : addressResult?.address || '';
-      } catch (addrErr) {
-        console.warn('getAddress also failed:', addrErr);
-      }
-    }
-
-    if (!publicKey || typeof publicKey !== 'string' || !publicKey.startsWith('G')) {
-      throw new Error(
-        "Could not retrieve public key. Make sure Freighter is unlocked, set to TESTNET, and you click 'Allow' on the popup."
-      );
-    }
-
+    if (!publicKey) throw new Error("Could not retrieve public key.");
     return publicKey;
   } catch (error) {
-    console.error("Connection Error:", error);
+    if (error.message?.includes("User declined")) throw new Error(ErrorTypes.USER_REJECTED);
     throw error;
   }
 };
 
 /**
- * Fetches the XLM balance for a given public key.
+ * Fetches the XLM balance.
  */
 export const getXlmBalance = async (publicKey) => {
   try {
-    const account = await server.loadAccount(publicKey);
+    const account = await horizonServer.loadAccount(publicKey);
     const nativeBalance = account.balances.find((b) => b.asset_type === 'native');
     return nativeBalance ? nativeBalance.balance : "0.0000000";
   } catch (error) {
-    console.error("Fetch Balance Error:", error);
-    if (error.response && error.response.status === 404) {
-      return "0.0000000 (Not funded)";
-    }
+    if (error.response?.status === 404) return ErrorTypes.UNFUNDED_ACCOUNT;
     throw error;
   }
 };
 
 /**
- * Sends XLM to a destination address.
+ * FETCH REAL HISTORY: Last 5 relevant operations (Payments, Creations)
+ */
+export const fetchAccountHistory = async (publicKey) => {
+  try {
+    const response = await horizonServer.operations()
+      .forAccount(publicKey)
+      .order("desc")
+      .limit(15)
+      .call();
+    
+    return response.records
+      .filter(rec => rec.type === 'payment' || rec.type === 'create_account')
+      .map(rec => {
+        const isCreation = rec.type === 'create_account';
+        const amount = isCreation ? rec.starting_balance : rec.amount;
+        const target = isCreation ? rec.account : rec.to;
+        const source = isCreation ? (rec.funder || rec.from) : rec.from;
+
+        return {
+          id: rec.id,
+          addr: target === publicKey ? `From: ${source.substring(0,6)}...` : `To: ${target.substring(0,6)}...`,
+          amt: `${parseFloat(amount).toFixed(2)} XLM`,
+          status: 'success',
+          hash: rec.transaction_hash
+        };
+      })
+      .slice(0, 5);
+  } catch (error) {
+    console.error("History Fetch Error:", error);
+    return [];
+  }
+};
+
+/**
+ * FETCH RELIEF FUND DATA: Aggregated Donators
+ */
+export const fetchReliefFundStats = async () => {
+  try {
+    // 1. Get Balance
+    const account = await horizonServer.loadAccount(RELIEF_ADDR);
+    const balance = account.balances.find(b => b.asset_type === 'native')?.balance || "0";
+
+    // 2. Get Payments to aggregate donators
+    const payments = await horizonServer.payments()
+      .forAccount(RELIEF_ADDR)
+      .order("desc")
+      .limit(50)
+      .call();
+
+    const donorsMap = {};
+    payments.records.forEach(p => {
+      if (p.to === RELIEF_ADDR && p.type === 'payment' && p.asset_type === 'native') {
+        donorsMap[p.from] = (donorsMap[p.from] || 0) + parseFloat(p.amount);
+      }
+    });
+
+    const sortedDonors = Object.entries(donorsMap)
+      .map(([addr, amt]) => ({ addr: `${addr.substring(0,8)}...${addr.slice(-4)}`, amt }))
+      .sort((a, b) => b.amt - a.amt)
+      .slice(0, 5);
+
+    return {
+      total: parseFloat(balance),
+      donors: sortedDonors
+    };
+  } catch (error) {
+    console.error("Relief Stats Error:", error);
+    return { total: 0, donors: [] };
+  }
+};
+
+/**
+ * FETCH NETWORK WHALES: Curated high-balance accounts
+ */
+export const fetchNetworkWhales = async () => {
+  const whales = [
+    "GAB7Z6CB7S76MWD6S3CHY3G6V6CUZCHYCHOCHYCHOCHYCHOCHYCHOCHY", // SDF
+    "GAI3B5YTYHNHCVKRE6I24U6HKEW5O5NH6S2I7TETIHSF5YCOAIAIDRDM", // SDF Distribution
+    "GDWNFWP5H6TCS773V6Z2Z6CUZCHYCHOCHYCHOCHYCHOCHYCHOCHYCHO"  // Example 
+  ];
+
+  try {
+    const data = await Promise.all(whales.map(async (addr) => {
+      try {
+        const acc = await horizonServer.loadAccount(addr);
+        const bal = acc.balances.find(b => b.asset_type === 'native')?.balance || "0";
+        return { addr: `${addr.substring(0,8)}...`, amt: parseFloat(bal) };
+      } catch {
+        return { addr: `${addr.substring(0,8)}...`, amt: 0 };
+      }
+    }));
+    return data.sort((a, b) => b.amt - a.amt);
+  } catch (error) {
+    return [];
+  }
+};
+
+/**
+ * Sends XLM Payment (Enhanced for Level 2)
  */
 export const sendPayment = async (sourcePublicKey, destinationId, amount, onLog) => {
   try {
     onLog("INITIALIZING LINK...", "info");
+    const sourceAccount = await horizonServer.loadAccount(sourcePublicKey);
     
-    const sourceAccount = await server.loadAccount(sourcePublicKey);
-    onLog("ACCOUNT SYNCED.", "success");
-
     const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
       fee: StellarSdk.BASE_FEE,
-      networkPassphrase: StellarSdk.Networks.TESTNET,
+      networkPassphrase: NETWORK_PASSPHRASE,
     })
-      .addOperation(
-        StellarSdk.Operation.payment({
-          destination: destinationId,
-          asset: StellarSdk.Asset.native(),
-          amount: amount.toString(),
-        })
-      )
+      .addOperation(StellarSdk.Operation.payment({
+        destination: destinationId,
+        asset: StellarSdk.Asset.native(),
+        amount: amount.toString(),
+      }))
       .setTimeout(60)
       .build();
 
-    onLog("ENCRYPTING PAYLOAD...", "info");
     const xdr = transaction.toXDR();
-
-    onLog("AWAITING AGENT SIGNATURE...", "info");
     const freighterApi = await import('@stellar/freighter-api');
-    const signResult = await freighterApi.signTransaction(xdr, {
-      network: "TESTNET",
-    });
-
-    if (signResult.error) {
-      throw new Error(signResult.error);
-    }
-
-    const signedXdr = signResult.signedTxXdr || signResult;
-    onLog("SIGNATURE VERIFIED.", "success");
-
-    onLog("UPLOADING TO STELLAR NETWORK...", "info");
-    const tx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, StellarSdk.Networks.TESTNET);
-    const response = await server.submitTransaction(tx);
+    const signResult = await freighterApi.signTransaction(xdr, { networkPassphrase: NETWORK_PASSPHRASE });
     
-    onLog(`TRANSACTION COMPLETE. HASH: ${response.hash.substring(0, 16)}...`, "success");
+    const signedXdr = signResult.signedTxXdr || signResult;
+    const tx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+    const response = await horizonServer.submitTransaction(tx);
+    
     return response;
   } catch (error) {
-    onLog(`ERROR: ${error.message || "TRANSACTION FAILED"}`, "error");
+    if (error.message?.includes("User declined")) throw new Error(ErrorTypes.USER_REJECTED);
     throw error;
   }
 };
