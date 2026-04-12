@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     nodePolyfills(),
   ],
+  resolve: {
+    alias: {
+      '@creit.tech/stellar-wallets-kit': '@creit.tech/stellar-wallets-kit/index.mjs'
+    }
+  },
+  optimizeDeps: {
+    include: ['@creit.tech/stellar-wallets-kit']
+  }
 })

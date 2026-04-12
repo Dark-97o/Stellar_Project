@@ -949,3 +949,102 @@ body::before {
 .leaderboard-rank { font-size: 1.5rem; color: var(--yellow); font-family: var(--font-display); margin-right: 1.5rem; opacity: 0.8; }
 .leaderboard-addr { flex: 1; font-size: 0.8rem; color: #c8bfa8; font-family: var(--font-mono); }
 .leaderboard-amt { font-family: var(--font-display); color: var(--yellow); font-size: 1.1rem; }
+
+/* 💠 MODAL SYSTEM 💠 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 15, 0.85);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  animation: fade-in 0.3s ease-out;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg-card);
+  border: 1px solid var(--yellow);
+  box-shadow: var(--glow-md);
+  position: relative;
+  animation: scale-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.wallet-option {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 195, 0, 0.03);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.wallet-option:hover {
+  background: rgba(255, 195, 0, 0.08);
+  border-color: var(--yellow);
+  transform: translateX(5px);
+  box-shadow: var(--glow-sm);
+}
+
+.wallet-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-abyss);
+  border: 1px solid var(--yellow-faint);
+  font-size: 1.2rem;
+}
+
+.wallet-info {
+  flex: 1;
+}
+
+.wallet-name {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--yellow);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.wallet-desc {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}

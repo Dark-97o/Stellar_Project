@@ -14,6 +14,9 @@ To move beyond simple payments, we will integrate **Soroban**, Stellar's native 
 - **Tooling**: `stellar-cli` (v20+) for deployment and environment management.
 
 ### B. "Crowdfunding" Contract Architecture
+Contract ID: `[PENDING_UPLINK_DEPLOYMENT]`  
+*(Initialize via `deploy.js` after local WASM compilation)*
+
 We will implement a `DystopianRelief` contract:
 - **State**: `TotalContributions`, `Deadline`, `TargetAmount`.
 - **Functions**:

@@ -7,8 +7,11 @@ import {
   fetchAccountHistory, 
   fetchReliefFundStats, 
   fetchNetworkWhales, 
-  RELIEF_ADDR 
+  RELIEF_ADDR,
+  invokeContractDonate,
+  ErrorTypes
 } from './utils/stellar';
+import { ALLOWED_WALLETS } from './utils/kit';
 import './index.css';
 
 /* ══════════════════════════════════════════════════════════════
@@ -63,17 +66,19 @@ class ErrorBoundary extends Component {
    ══════════════════════════════════════════════════════════════ */
 function App() {
   const [address, setAddress] = useState('');
-  const [balance, setBalance] = useState('0.0000000');
+  const [balance, setBalance] = useState('0.00');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('terminal');
   const [logs, setLogs] = useState([
-    { msg: 'SURVIVOR HUB v2.0 ONLINE. UPLINK STANDBY.', type: 'info', ts: new Date().toLocaleTimeString() },
+    { msg: 'SURVIVOR HUB v2.1 ONLINE. MULTI-UPLINK ESTABLISHED.', type: 'info', ts: new Date().toLocaleTimeString() },
   ]);
 
   // View States
   const [dest, setDest] = useState('');
   const [amt, setAmt] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletType, setWalletType] = useState(null);
 
   // Real Data States
   const [history, setHistory] = useState([]);
@@ -118,17 +123,26 @@ function App() {
     }
   };
 
-  /* ── WALLET ACTIONS ───────────────────────────────────────── */
-  const handleConnect = async () => {
+  /* ── LEVEL 2 WALLET ACTIONS ───────────────────────────────── */
+  const handleConnect = () => {
+    setShowWalletModal(true);
+  };
+
+  const connectToSpecificWallet = async (type) => {
+    setShowWalletModal(false);
     setLoading(true);
     try {
-      log('INITIATING SECURE UPLINK...', 'info');
-      const key = await connectWallet();
+      log(`INITIATING UPLINK VIA [${type}]...`, 'info');
+      const key = await connectWallet(type);
       setAddress(key);
-      log(`UPLINK OK → ${key.substring(0, 8)}...`, 'ok');
+      setWalletType(type);
+      log(`UPLINK SECURED → [${key.substring(0, 12)}...]`, 'ok');
       await syncAllData(key);
     } catch (err) {
-      log(`UPLINK FAILED → ${err.message}`, "err");
+      const errorMsg = err.message === 'SURVIVOR_REJECTED_LINK' 
+        ? 'UPLINK ABORTED BY OPERATOR.' 
+        : `CRITICAL ERROR: ${err.message}`;
+      log(errorMsg, "err");
     } finally {
       setLoading(false);
     }
@@ -136,39 +150,44 @@ function App() {
 
   const handleDisconnect = () => {
     setAddress('');
-    setBalance('0.0000000');
+    setBalance('0.00');
+    setWalletType(null);
     setHistory([]);
-    log('UPLINK SEVERED.', 'info');
+    log('UPLINK SEVERED BY OPERATOR.', 'info');
   };
 
-  /* ── FEATURE HANDLERS ────────────────────────────────────── */
+  /* ── TRANSACTION LIFECYCLE HANDLERS ─────────────────────── */
   const handleSend = async (e) => {
     e.preventDefault();
     setLoading(true);
     setTxHash('');
     try {
-      const res = await sendPayment(address, dest, amt, (m, t) => log(m, t));
+      const res = await sendPayment(address, dest, amt, (m, t) => log(m, t), walletType);
       setTxHash(res.hash);
-      log("TRANSACTION LANDED ON LEDGER.", "ok");
+      log("UPLINK FINALIZED. LEDGER SYNCHRONIZED.", "ok");
       await syncAllData();
       setDest(''); setAmt('');
     } catch (err) {
-      log(`TRANS_ERR: ${err.message}`, "err");
+      log(`TRANSACTION FAILURE: ${err.message}`, "err");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDonate = async (amount = 50) => {
-    if (!address) { log("UPLINK REQUIRED.", "err"); return; }
+    if (!address) { log("UPLINK REQUIRED FOR ACTION.", "err"); return; }
     setLoading(true);
     try {
-      log(`INITIATING DONATION: ${amount} XLM...`, "info");
-      const res = await sendPayment(address, RELIEF_ADDR, amount.toString(), (m, t) => log(m, t));
-      log("DONATION SECURED. RELIEF FUND UPDATED.", "ok");
+      log(`INITIATING SOROBAN CONTRACT DONATION: ${amount} XLM...`, "info");
+      await invokeContractDonate(address, amount, (m, t) => log(m, t), walletType);
+      log("SOROBAN EXECUTION COMPLETE. FINALIZING VIA HORIZON...", "info");
+      
+      const res = await sendPayment(address, RELIEF_ADDR, amount.toString(), (m, t) => log(m, t), walletType);
+      
+      log(`DONATION CONFIRMED: ${res.hash.substring(0,8)}...`, "ok");
       await syncAllData();
     } catch (err) {
-      log(`DONATE_ERR: ${err.message}`, "err");
+      log(`CONTRACT_ERR: ${err.message}`, "err");
     } finally {
       setLoading(false);
     }
@@ -182,26 +201,26 @@ function App() {
           <div className="enter">
             <div className="card card--tall">
               <div className="card-corner-br" />
-              <div className="card-tag">⬡ Payment Terminal</div>
+              <div className="card-tag">📡 Level 2 Terminal</div>
               <div className="card-body">
                 <form onSubmit={handleSend}>
                   <div className="input-group">
-                    <label className="field-label">Recipient Identity</label>
+                    <label className="field-label">Target Identity (Public Key)</label>
                     <input className="input" placeholder="GA..." value={dest} onChange={e => setDest(e.target.value)} required />
                   </div>
                   <div className="input-group">
-                    <label className="field-label">Resource Amount (XLM)</label>
+                    <label className="field-label">XLM Resources to Transfer</label>
                     <input className="input" type="number" placeholder="0.00" value={amt} onChange={e => setAmt(e.target.value)} required />
                   </div>
                   <button className="btn btn--full" type="submit" disabled={loading || !address}>
-                    {loading ? <span className="spinner" /> : 'Execute Sequence'}
+                    {loading ? <span className="spinner" /> : 'EXECUTE UPLINK'}
                   </button>
                 </form>
                 {txHash && (
                   <div className="tx-result">
                     <div className="sep" />
-                    <p className="tx-hash">HASH: {txHash.substring(0,24)}...</p>
-                    <button className="btn btn--ghost btn--full" onClick={() => window.open(getExplorerUrl(txHash), '_blank')}>EXPLORER UPLINK ↗</button>
+                    <p className="tx-hash">STATUS: FINALIZED | HASH: {txHash.substring(0,16)}...</p>
+                    <button className="btn btn--ghost btn--full" onClick={() => window.open(getExplorerUrl(txHash), '_blank')}>VERIFY ON LEDGER ↗</button>
                   </div>
                 )}
               </div>
@@ -213,14 +232,14 @@ function App() {
           <div className="enter">
             <div className="card">
               <div className="card-corner-br" />
-              <div className="card-tag">◆ Payment Tracker (Last 5)</div>
+              <div className="card-tag">▣ Recent Ledger Activity</div>
               <div className="card-body">
                 {history.length === 0 ? (
-                  <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>NO RECENT DATA DETECTED ON LEDGER</p>
+                  <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>AWAITING DATA SYNC...</p>
                 ) : (
                   <table className="tracker-table">
                     <thead>
-                      <tr><th>Identity</th><th>Amount</th><th>Link</th></tr>
+                      <tr><th>Identifier</th><th>Volume</th><th>Protocol</th></tr>
                     </thead>
                     <tbody>
                       {history.map(item => (
@@ -228,7 +247,7 @@ function App() {
                           <td>{item.addr}</td>
                           <td style={{ color: 'var(--yellow)' }}>{item.amt}</td>
                           <td>
-                            <a href={getExplorerUrl(item.hash)} target="_blank" rel="noreferrer" style={{ color: 'var(--orange)', textDecoration: 'none' }}>↗ VIEW</a>
+                            <a href={getExplorerUrl(item.hash)} target="_blank" rel="noreferrer" style={{ color: 'var(--orange)', textDecoration: 'none' }}>↗ VERIFY</a>
                           </td>
                         </tr>
                       ))}
@@ -245,31 +264,31 @@ function App() {
           <div className="enter">
             <div className="card">
               <div className="card-corner-br" />
-              <div className="card-tag">▣ Relief Fund</div>
+              <div className="card-tag">▣ Soroban Relief Protocol</div>
               <div className="card-body">
-                <p className="field-label">Real-Time Distribution</p>
+                <p className="field-label">CONTRACT-MANAGED DISTRIBUTION</p>
                 <div className="progress-meter">
                   <div className="progress-fill" style={{ width: `${progress}%` }} />
                   <div className="progress-label">{progress.toFixed(1)}% SECURED</div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                  <div><span className="field-label">Current Pool</span><br /><span className="balance-num" style={{ fontSize: '1.5rem' }}>{fundTotal.toLocaleString()}</span> XLM</div>
+                  <div><span className="field-label">Global Pool</span><br /><span className="balance-num" style={{ fontSize: '1.5rem' }}>{fundTotal.toLocaleString()}</span> XLM</div>
                   <div style={{ textAlign: 'right' }}><span className="field-label">Target Goal</span><br /><span className="balance-num" style={{ fontSize: '1.5rem', opacity: 0.5 }}>{fundGoal.toLocaleString()}</span> XLM</div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <button className="btn btn--full" onClick={() => handleDonate(10)} disabled={loading || !address}>
-                    10 XLM
+                    DONATE 10
                   </button>
-                  <button className="btn btn--full" onClick={() => handleDonate(50)} disabled={loading || !address}>
-                    50 XLM
+                  <button className="btn btn--full" onClick={() => handleDonate(100)} disabled={loading || !address}>
+                    DONATE 100
                   </button>
                 </div>
                 <div className="sep" style={{ margin: '1.5rem 0' }} />
-                <p className="field-label" style={{ marginBottom: '1rem' }}>Top Survivors Contributors</p>
+                <p className="field-label" style={{ marginBottom: '1rem' }}>Latest Smart Contract Events</p>
                 <div className="leaderboard-list">
                   {donors.map((d, i) => (
                     <div key={i} className="leaderboard-item" style={{ padding: '0.6rem 1rem' }}>
-                      <span className="leaderboard-rank">#{i+1}</span>
+                      <span className="leaderboard-rank">#</span>
                       <span className="leaderboard-addr" style={{ fontSize: '0.7rem' }}>{d.addr}</span>
                       <span className="leaderboard-amt" style={{ fontSize: '0.9rem' }}>{d.amt} XLM</span>
                     </div>
@@ -284,9 +303,9 @@ function App() {
           <div className="enter">
             <div className="card">
               <div className="card-corner-br" />
-              <div className="card-tag">✦ Network Whale Watch</div>
+              <div className="card-tag">✦ Network Stakeholders</div>
               <div className="card-body">
-                <p className="field-label" style={{ marginBottom: '1rem' }}>Total Network Stakeholders (Testnet)</p>
+                <p className="field-label" style={{ marginBottom: '1rem' }}>REAL-TIME TOP HOLDERS (TESTNET)</p>
                 <div className="leaderboard-list">
                   {whales.map((w, idx) => (
                     <div key={idx} className="leaderboard-item">
@@ -320,7 +339,7 @@ function App() {
                   <path d="M74.4 50.6L25.7 73.2C24.3 73.8 24.3 75.8 25.7 76.4L33.5 79.8L74.4 61V50.6Z" fill="#ffc300"/>
                   <path d="M74.4 61L33.5 79.8L36.8 81.3L74.4 63.8V61Z" fill="#ff6d00" opacity="0.7"/>
                 </svg>
-                <div><h1 className="site-title">Stellar Network</h1><h1 className="site-title" style={{ fontSize: '1.2rem', opacity: 0.8 }}>Survivor Hub v2.0</h1></div>
+                <div><h1 className="site-title">Stellar Network</h1><h1 className="site-title" style={{ fontSize: '1.2rem', opacity: 0.8 }}>Survivor Hub v2.1</h1></div>
               </div>
             </div>
             <div className="header-badges"><span className="badge badge--net">⬡ Testnet</span><span className="badge badge--warn">◈ Restricted</span></div>
@@ -328,20 +347,20 @@ function App() {
           <div className="header-status">
             <span className={`dot ${address ? 'dot--on' : ''}`} />
             <span className={`status-label ${address ? 'status-label--on' : ''}`}>
-              {address ? `UPLINK ACTIVE: ${address.substring(0,8)}...` : 'DISCONNECTED — AWAITING UPLINK'}
+              {address ? `LEVEL 2 UPLINK ACTIVE: ${address.substring(0,12)}...` : 'UPLINK DISCONNECTED'}
             </span>
           </div>
         </header>
 
         <main className="survivor-hub">
           <nav className="nav-sidebar">
-            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>📡 Payment Terminal</div>
-            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>◆ Payment Tracker</div>
-            <div className={`nav-item ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>▣ Relief Fund</div>
+            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>📡 Terminal</div>
+            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>◆ Tracker</div>
+            <div className={`nav-item ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>▣ Contract Fund</div>
             <div className={`nav-item ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>✦ Leaderboard</div>
             <div className="mt-auto">
               <div className="card card--compact" style={{ padding: '0.8rem', border: '1px solid rgba(255,195,0,0.1)' }}>
-                <span className="field-label">Current Balance</span>
+                <span className="field-label">Operator Resources</span>
                 <div className="balance-num" style={{ fontSize: '1.2rem', textAlign: 'left' }}>{parseFloat(balance).toLocaleString()}</div>
                 <div className="field-label" style={{ fontSize: '0.45rem', marginTop: '0.5rem' }}>XLM DETECTED</div>
               </div>
@@ -380,6 +399,57 @@ function App() {
           <p className="footer-line">Survivor Network Hub &nbsp;│&nbsp; Soroban Powered &nbsp;│&nbsp; System v2.1.0</p>
         </footer>
       </div>
+
+      {showWalletModal && (
+        <div className="modal-overlay" onClick={() => setShowWalletModal(false)}>
+          <div className="modal-content card" onClick={e => e.stopPropagation()}>
+            <div className="card-corner-br" />
+            <div className="modal-header">
+              <div className="card-tag" style={{ margin: 0 }}>📡 Select Uplink Protocol</div>
+              <button className="btn btn--ghost" style={{ padding: '0.2rem 0.5rem', minWidth: 'auto' }} onClick={() => setShowWalletModal(false)}>X</button>
+            </div>
+            <div className="modal-body">
+              <div className="wallet-grid">
+                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.FREIGHTER)}>
+                  <div className="wallet-icon">F</div>
+                  <div className="wallet-info">
+                    <div className="wallet-name">Freighter</div>
+                    <div className="wallet-desc">Standard Survivor Terminal Uplink</div>
+                  </div>
+                </div>
+                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.ALBEDO)}>
+                  <div className="wallet-icon">A</div>
+                  <div className="wallet-info">
+                    <div className="wallet-name">Albedo</div>
+                    <div className="wallet-desc">Web-based secure protocol</div>
+                  </div>
+                </div>
+                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.XBULL)}>
+                  <div className="wallet-icon">B</div>
+                  <div className="wallet-info">
+                    <div className="wallet-name">xBull</div>
+                    <div className="wallet-desc">Alternative hardened terminal</div>
+                  </div>
+                </div>
+                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.RABE)}>
+                  <div className="wallet-icon">R</div>
+                  <div className="wallet-info">
+                    <div className="wallet-name">Rabe</div>
+                    <div className="wallet-desc">Simplified Survivor Uplink</div>
+                  </div>
+                </div>
+                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.HANA)}>
+                  <div className="wallet-icon">H</div>
+                  <div className="wallet-info">
+                    <div className="wallet-name">Hana</div>
+                    <div className="wallet-desc">Soroban Optimized Gateway</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

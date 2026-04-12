@@ -15,6 +15,9 @@ pub struct ReliefFundContract;
 impl ReliefFundContract {
     /// Initialize the fund with a target goal (in stroops)
     pub fn init(env: Env, goal: i128) {
+        if env.storage().instance().has(&DataKey::Goal) {
+            panic!("STATION_ALREADY_INITIALIZED");
+        }
         env.storage().instance().set(&DataKey::Goal, &goal);
         env.storage().instance().set(&DataKey::Total, &0i128);
     }
