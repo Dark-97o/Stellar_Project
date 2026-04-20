@@ -88,6 +88,7 @@ function App() {
   const [fundTotal, setFundTotal] = useState(0);
   const [donors, setDonors] = useState([]);
   const [whales, setWhales] = useState([]);
+  const [hasAlerts, setHasAlerts] = useState(true); // Tactical alert simulation
   const [fundGoal, setFundGoal] = useState(10000);
 
   // New Feature States
@@ -263,7 +264,7 @@ function App() {
           <div className="enter">
             <div className="card card--tall">
               <div className="card-corner-br" />
-              <div className="card-tag">📡 Level 2 Terminal</div>
+              <div className="card-tag">📡 PAYMENTS GATEWAY</div>
               <div className="card-body">
                 <form onSubmit={handleSend}>
                   <div className="input-group">
@@ -508,7 +509,14 @@ function App() {
                 <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.7, fontWeight: 500, letterSpacing: '2px' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
-            <div className="header-badges"><span className="badge badge--net">Testnet</span><span className="badge badge--warn">Restricted</span></div>
+            <div className="header-badges">
+              <span className="badge badge--net">Testnet</span>
+              <span className="badge badge--warn">Restricted</span>
+              <div className="notification-wrapper" onClick={() => { setActiveTab('events'); setHasAlerts(false); }} title="VIEW SYSTEM EVENTS">
+                <span className="notification-bell">🔔</span>
+                {hasAlerts && <div className="notification-dot" />}
+              </div>
+            </div>
           </div>
           <div className="header-status">
             <span className={`dot ${address ? 'dot--on' : ''}`} />
@@ -527,20 +535,18 @@ function App() {
                 <span>{parseFloat(balance).toLocaleString()} XLM</span>
               </div>
             )}
-            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Terminal</div>
-            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Calculator</div>
-            <div className={`nav-item ${activeTab === 'faucet' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('faucet')}>Resource Faucet</div>
-            <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
-            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>Payment Tracker</div>
-            <div className={`nav-item ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>Contract Fund</div>
-            <div className={`nav-item ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>Network Leaderboard</div>
+            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>PAYMENTS</div>
+            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>SPLIT BILL</div>
+            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>HISTORY</div>
+            
+            <div className="sep" style={{ margin: '0.4rem 0' }} />
+            
+            <div className={`nav-item nav-item--green ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>LEADERBOARD</div>
+            <div className={`nav-item nav-item--green ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>DONATE</div>
+            <div className={`nav-item nav-item--green ${activeTab === 'faucet' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('faucet')}>FAUCET</div>
+
             <div className="mt-auto">
-              <div className="card card--compact" style={{ padding: '0.8rem', border: '1px solid var(--border)' }}>
-                <span className="field-label">Network Resources</span>
-                <div className="flex-col gap-sm" style={{ marginTop: '0.5rem' }}>
-                  <button className="btn btn--danger" style={{ width: '100%', fontSize: '0.55rem' }} onClick={() => setLogs([])}>Clear Logs</button>
-                </div>
-              </div>
+              <button className="btn btn--danger" style={{ width: '100%', fontSize: '0.55rem', padding: '0.4rem' }} onClick={() => setLogs([])}>Clear Logs</button>
               {!address ? (
                 <button className="btn btn--full btn--pulse" onClick={handleConnect} style={{ marginTop: '1rem' }}>LINK OPERATOR</button>
               ) : (
