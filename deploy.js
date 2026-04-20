@@ -6,7 +6,8 @@ import {
   Keypair, 
   BASE_FEE,
   StrKey,
-  nativeToScVal
+  nativeToScVal,
+  Address
 } from '@stellar/stellar-sdk';
 import fs from 'fs';
 
@@ -27,7 +28,7 @@ async function deployAndInit() {
   }
 
   const kp = Keypair.fromSecret(secretKey);
-  const wasmPath = "./contracts/relief_fund/target/wasm32-unknown-unknown/release/relief_fund.optimized.wasm";
+  const wasmPath = "./TranscendenceContract/target/wasm32v1-none/release/transcendence_contract.wasm";
   
   if (!fs.existsSync(wasmPath)) {
     console.error(`❌ ERROR: WASM not found at ${wasmPath}. Run 'cargo build' first.`);
@@ -85,7 +86,11 @@ async function deployAndInit() {
     const initOp = Operation.invokeContractFunction({
       contract: contractId,
       function: "init",
-      args: [nativeToScVal(10000, { type: "i128" })]
+      args: [
+        Address.fromString(kp.publicKey()).toScVal(), // Admin
+        Address.fromString(kp.publicKey()).toScVal(), // Token (Placeholder: using local account as SAC)
+        nativeToScVal(10000, { type: "i128" })        // Goal
+      ]
     });
 
     const txInit = new TransactionBuilder(account, {
