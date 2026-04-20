@@ -14,6 +14,11 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 - **📋 Transaction Logs** — Live diagnostic console showing all operations and errors
 - **🔍 Explorer Links** — View completed transactions on Stellar Expert
 - **🎨 Dystopian UI** — Immersive dark terminal aesthetic with CRT scanlines, glassmorphism cards, and animated effects
+- **📱 Zero-Scroll Architecture** — High-density design optimized for professional monitoring without vertical scrolling
+- **💎 Dynamic Discovery Engine** — Tiered leaderboard protocol that "hunts" for new network whales via live ledger scanning
+- **🏦 Multi-Wallet Gateway** — Unified uplink supporting Freighter, Rabe, Hana, xBull, and Albedo
+- **⚡ Soroban Relief Protocol** — Direct smart contract interaction for decentralized relief funding
+- **🔔 Tactical Notifications** — Real-time red-dot alert system for critical system events
 - **📱 Responsive** — Adapts from desktop two-column layout to single-column on mobile
 - **🛡️ Error Boundary** — Graceful crash recovery with themed error screen
 
@@ -28,6 +33,22 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 | [@stellar/stellar-sdk](https://www.npmjs.com/package/@stellar/stellar-sdk) | Stellar blockchain interactions |
 | [@stellar/freighter-api](https://www.npmjs.com/package/@stellar/freighter-api) | Freighter wallet integration |
 | [Horizon Testnet](https://horizon-testnet.stellar.org) | Stellar Testnet API endpoint |
+| [Soroban RPC](https://soroban-testnet.stellar.org) | Smart contract interaction layer |
+| [StellarWalletsKit](https://www.npmjs.com/package/@CREW-SDK/stellar-wallets-kit) | Multi-wallet abstraction layer |
+
+### 🧠 Advanced Architectures
+
+#### 1. Triple-Redundant Leaderboard (Hunters Protocol)
+The Hub employs a three-tier strategy to ensure the Network Leaderboard is never empty:
+- **Tier 1 (Analytical)**: Real-time rich-list data from StellarExpert APIs.
+- **Tier 2 (Discovery)**: A live "Discovery Engine" that scans the latest 50-100 ledger operations to identify active high-volume accounts and audits their balances directly via Horizon.
+- **Tier 3 (Fail-safe)**: A hardcoded registry of verified high-balance accounts used as a mission-critical last resort.
+
+#### 2. Soroban Smart Contract Integration
+The **DONATE** module interfaces directly with a WASM-based smart contract on the Soroban testnet. It handles:
+- Real-time simulation of contract state (Goal vs. Secured).
+- Transaction preparation, footprint analysis, and multi-wallet signing.
+- Event tracking to identify recent network contributors.
 
 ---
 
@@ -109,6 +130,22 @@ After submitting a transfer, the transaction is signed via Freighter and submitt
 
 The completed transaction result shows the full hash and a link to view the transaction on Stellar Expert. The diagnostics panel logs every step of the process.
 
+### Multi-Wallet Gateway
+The "Link Operator" interface allows selection between multiple uplink protocols, ensuring accessibility regardless of the operator's preferred extension.
+
+### Deployment Environment
+The Hub is optimized for static deployment, providing high-density telemetry across various tactical resolutions.
+
+---
+
+## 📜 Deployed Contracts & Transactions
+
+| Resource | Address / Hash |
+|---|---|
+| **Relief Protocol (Contract)** | `CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5` |
+| **Relief Addr (Vault)** | `GDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBMIHUCLRIA` |
+| **Example Tx (Donation)** | `09033328e18f26a64016b8015c7e108130761e38941074e2d4d9bba7740e7208` |
+
 
 
 
@@ -118,20 +155,23 @@ The completed transaction result shows the full hash and a link to view the tran
 
 ```
 Stellar_Project/
+├── TranscendenceContract/       # Soroban Smart Contract Source (Rust)
+│   ├── contracts/
+│   │   └── hello-world/         # Core Relief Protocol logic
+│   └── Cargo.toml               # Workspace configuration
 ├── public/
-│   └── dystopian-bg.png        # Background image
+│   └── dystopian-bg.png         # Background image
 ├── src/
-│   ├── assets/                 # Static assets
+│   ├── assets/                  # Static assets & 3D Spline scenes
 │   ├── utils/
-│   │   └── stellar.js          # Stellar SDK & Freighter API logic
-│   ├── App.jsx                 # Main app component + Error Boundary
-│   ├── index.css               # Complete design system & styles
-│   └── main.jsx                # React entry point
-├── screenshots/                # README screenshots
-├── index.html                  # HTML entry point
-├── vite.config.js              # Vite configuration with Node polyfills
-├── package.json                # Dependencies & scripts
-└── README.md                   # This file
+│   │   ├── stellar.js           # Triple-tier logic & Discovery Engine
+│   │   └── kit.js               # Multi-wallet shim & abstraction
+│   ├── App.jsx                  # Tactical interface & tab routing
+│   ├── index.css                # Enterprise design system (Green-tier lights)
+│   └── main.jsx                 # Entry point
+├── index.html                   # HTML structure
+├── vite.config.js               # Build logic & polyfills
+└── README.md                    # Operational walkthrough
 ```
 
 ---
@@ -165,9 +205,10 @@ loadAccount() → buildTransaction() → signTransaction() → submitTransaction
 ## ⚠️ Important Notes
 
 - This app runs on the **Stellar Testnet** — no real funds are involved
-- Freighter must be set to **TESTNET** mode to work with this app
-- Fund your testnet account via [Friendbot](https://friendbot.stellar.org) before transacting
-- The minimum balance for a Stellar account is **1 XLM** (testnet)
+- Multiple wallets are supported; ensure your chosen extension is set to **TESTNET**
+- Fund your testnet account via **FAUCET** or [Friendbot](https://friendbot.stellar.org)
+- The **Discovery Engine** audits identity-level fluidity across recent ledger activity
+- Zero-balance accounts are automatically pruned from the Network Leaderboard
 
 ---
 
