@@ -85,7 +85,7 @@ function App() {
   const [fundTotal, setFundTotal] = useState(0);
   const [donors, setDonors] = useState([]);
   const [whales, setWhales] = useState([]);
-  const fundGoal = 10000;
+  const [fundGoal, setFundGoal] = useState(10000);
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -114,6 +114,7 @@ function App() {
 
       const relief = await fetchReliefFundStats();
       setFundTotal(relief.total);
+      setFundGoal(relief.goal || 10000);
       setDonors(relief.donors);
 
       const netWhales = await fetchNetworkWhales();
@@ -179,12 +180,9 @@ function App() {
     setLoading(true);
     try {
       log(`INITIATING SOROBAN CONTRACT DONATION: ${amount} XLM...`, "info");
-      await invokeContractDonate(address, amount, (m, t) => log(m, t), walletType);
-      log("SOROBAN EXECUTION COMPLETE. FINALIZING VIA HORIZON...", "info");
+      const res = await invokeContractDonate(address, amount, (m, t) => log(m, t), walletType);
       
-      const res = await sendPayment(address, RELIEF_ADDR, amount.toString(), (m, t) => log(m, t), walletType);
-      
-      log(`DONATION CONFIRMED: ${res.hash.substring(0,8)}...`, "ok");
+      log(`DONATION FINALIZED VIA CONTRACT.`, "ok");
       await syncAllData();
     } catch (err) {
       log(`CONTRACT_ERR: ${err.message}`, "err");

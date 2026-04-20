@@ -14,7 +14,7 @@ const rpcServer = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org
 const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;
 export const RELIEF_ADDR = "GDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBMIHUCLRIA";
 // Placeholder for Level 2 Soroban Contract ID
-export const CONTRACT_ID = "CCXGDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBM"; 
+export const CONTRACT_ID = "CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5"; 
 
 // Initialize Multi-Wallet Kit (using local shim)
 const kit = new StellarWalletsKit({
@@ -106,36 +106,53 @@ export const fetchAccountHistory = async (publicKey) => {
  * SOROBAN: Read Data from Contract (Level 2)
  */
 export const fetchReliefFundStats = async () => {
-  // Level 2 Implementation: Combined Horizon (Aggregation) + Soroban (Latest State)
   try {
-    const account = await horizonServer.loadAccount(RELIEF_ADDR);
-    const balance = account.balances.find(b => b.asset_type === 'native')?.balance || "0";
+    // 1. Fetch Contract State via Simulation
+    const contract = new StellarSdk.Contract(CONTRACT_ID);
+    const tx = new StellarSdk.TransactionBuilder(
+      new StellarSdk.Account("GDBLVEG3X3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3", "0"), 
+      { fee: "100", networkPassphrase: NETWORK_PASSPHRASE }
+    )
+      .addOperation(contract.call("get_stats"))
+      .setTimeout(0)
+      .build();
 
-    const payments = await horizonServer.payments()
-      .forAccount(RELIEF_ADDR)
-      .order("desc")
-      .limit(50)
-      .call();
+    const sim = await rpcServer.simulateTransaction(tx);
+    let total = 0;
+    let goal = 10000;
 
-    const donorsMap = {};
-    payments.records.forEach(p => {
-      if (p.to === RELIEF_ADDR && p.type === 'payment' && p.asset_type === 'native') {
-        donorsMap[p.from] = (donorsMap[p.from] || 0) + parseFloat(p.amount);
-      }
+    if (sim.result) {
+      const stats = StellarSdk.scValToNative(sim.result.retval);
+      total = Number(stats.total) / 10000000; // Assuming 7 decimals for XLM stroops
+      goal = Number(stats.goal) / 10000000;
+    }
+
+    // 2. Fetch Latest Donation Events
+    const latestLedger = await rpcServer.getLatestLedger();
+    const eventResponse = await rpcServer.getEvents({
+      startLedger: latestLedger.sequence - 10000, // Look back ~1 day
+      filters: [{
+        type: "contract",
+        contractIds: [CONTRACT_ID]
+      }],
+      limit: 10
     });
 
-    const sortedDonors = Object.entries(donorsMap)
-      .map(([addr, amt]) => ({ addr: `${addr.substring(0,8)}...${addr.slice(-4)}`, amt }))
-      .sort((a, b) => b.amt - a.amt)
+    const donors = eventResponse.events
+      .filter(e => e.type === "contract")
+      .map(e => {
+        const data = StellarSdk.scValToNative(e.value);
+        return {
+          addr: `${data.donor.substring(0, 8)}...${data.donor.slice(-4)}`,
+          amt: Number(data.amount) / 10000000
+        };
+      })
       .slice(0, 5);
 
-    return {
-      total: parseFloat(balance),
-      donors: sortedDonors
-    };
+    return { total, goal, donors };
   } catch (error) {
     console.error("Relief Stats Error:", error);
-    return { total: 0, donors: [] };
+    return { total: 0, goal: 10000, donors: [] };
   }
 };
 
@@ -150,7 +167,11 @@ export const invokeContractDonate = async (publicKey, amount, onLog, walletType)
     
     // 1. Build Interaction Operation
     const contract = new StellarSdk.Contract(CONTRACT_ID);
-    const operation = contract.call("donate", StellarSdk.nativeToScVal(amount, { type: "u128" }));
+    const operation = contract.call(
+      "donate", 
+      StellarSdk.Address.fromString(publicKey).toScVal(), // Parameter 1: donor
+      StellarSdk.nativeToScVal(amount, { type: "i128" })    // Parameter 2: amount
+    );
     
     // 2. Build Transaction
     const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
