@@ -209,7 +209,13 @@ function App() {
       log(`INITIATING SOROBAN CONTRACT DONATION: ${amount} XLM...`, "info");
       const res = await invokeContractDonate(address, amount, (m, t) => log(m, t), walletType);
       
-      log(`DONATION FINALIZED VIA CONTRACT.`, "ok");
+      if (res.hash) {
+        setTxHash(res.hash);
+        log(`DONATION FINALIZED VIA CONTRACT. HASH: ${res.hash.substring(0,16)}...`, "ok");
+      } else {
+        log(`DONATION FINALIZED VIA CONTRACT.`, "ok");
+      }
+      
       await syncAllData();
     } catch (err) {
       log(`CONTRACT_ERR: ${err.message}`, "err");
@@ -441,6 +447,13 @@ function App() {
                     DONATE 100
                   </button>
                 </div>
+                {txHash && activeTab === 'fund' && (
+                  <div className="tx-result" style={{ marginTop: '1.5rem' }}>
+                    <div className="sep" />
+                    <p className="tx-hash" style={{ fontSize: '0.65rem' }}>STATUS: SYNCED | HASH: {txHash.substring(0,16)}...</p>
+                    <button className="btn btn--ghost btn--full" onClick={() => window.open(getExplorerUrl(txHash), '_blank')}>VERIFY CONTRACT CALL ↗</button>
+                  </div>
+                )}
                 <div className="sep" style={{ margin: '1.5rem 0' }} />
                 <p className="field-label" style={{ marginBottom: '1rem' }}>Latest Smart Contract Events</p>
                 <div className="leaderboard-list">
