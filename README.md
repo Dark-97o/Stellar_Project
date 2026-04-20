@@ -142,9 +142,8 @@ The Hub is optimized for static deployment, providing high-density telemetry acr
 
 | Resource | Address / Hash |
 |---|---|
-| **Relief Protocol (Contract)** | `CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5` |
-| **Relief Addr (Vault)** | `GDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBMIHUCLRIA` |
-| **Example Tx (Donation)** | `09033328e18f26a64016b8015c7e108130761e38941074e2d4d9bba7740e7208` |
+| **Contract Address** | `CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5` |
+| **Transaction Hash** | `72fc0335e3b271d1e211295e63a1772a4345bd7414965f16e4207974255ad6cb` |
 
 
 
