@@ -9,9 +9,12 @@ import {
   fetchNetworkWhales, 
   RELIEF_ADDR,
   invokeContractDonate,
+  fundFromFaucet,
+  sendMultiPayment,
   ErrorTypes
 } from './utils/stellar';
 import { ALLOWED_WALLETS } from './utils/kit';
+import Spline from '@splinetool/react-spline';
 import './index.css';
 
 /* ══════════════════════════════════════════════════════════════
@@ -87,6 +90,13 @@ function App() {
   const [whales, setWhales] = useState([]);
   const [fundGoal, setFundGoal] = useState(10000);
 
+  // New Feature States
+  const [faucetLoading, setFaucetLoading] = useState(false);
+  const [splitMode, setSplitMode] = useState('single'); // 'single' or 'multi'
+  const [calcTotal, setCalcTotal] = useState('');
+  const [calcN, setCalcN] = useState(2);
+  const [multiRecipients, setMultiRecipients] = useState([{ dest: '', amt: '' }]);
+
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
 
@@ -94,7 +104,23 @@ function App() {
     setLogs(p => [...p, { msg, type, ts: new Date().toLocaleTimeString() }]);
   };
 
+  const formatAddress = (addr, start = 6, end = 4) => {
+    if (!addr || typeof addr !== 'string') return 'UNKNOWN_IDENTITY';
+    if (addr.length <= start + end) return addr;
+    return `${addr.substring(0, start)}...${addr.slice(-end)}`;
+  };
+
   // Sync Interval
+  useEffect(() => {
+    const loadWhales = async () => {
+      const data = await fetchNetworkWhales(log);
+      setWhales(data);
+    };
+    loadWhales();
+    const interval = setInterval(loadWhales, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!address) return;
     const interval = setInterval(() => {
@@ -117,7 +143,7 @@ function App() {
       setFundGoal(relief.goal || 10000);
       setDonors(relief.donors);
 
-      const netWhales = await fetchNetworkWhales();
+      const netWhales = await fetchNetworkWhales(log);
       setWhales(netWhales);
     } catch (e) {
       console.warn("Sync Error:", e);
@@ -137,7 +163,7 @@ function App() {
       const key = await connectWallet(type);
       setAddress(key);
       setWalletType(type);
-      log(`UPLINK SECURED → [${key.substring(0, 12)}...]`, 'ok');
+      log(`UPLINK SECURED → [${formatAddress(key, 12, 0)}...]`, 'ok');
       await syncAllData(key);
     } catch (err) {
       const errorMsg = err.message === 'SURVIVOR_REJECTED_LINK' 
@@ -191,6 +217,44 @@ function App() {
     }
   };
 
+  const handleFaucet = async () => {
+    if (!address) { log("UPLINK REQUIRED.", "err"); return; }
+    setFaucetLoading(true);
+    try {
+      await fundFromFaucet(address, (m, t) => log(m, t));
+      await syncAllData();
+    } catch (err) {
+      log("FAUCET FAILURE.", "err");
+    } finally {
+      setFaucetLoading(false);
+    }
+  };
+
+  const handleSplitPay = async (e) => {
+    e.preventDefault();
+    if (!address) return;
+    setLoading(true);
+    try {
+      await sendMultiPayment(address, multiRecipients, (m, t) => log(m, t), walletType);
+      await syncAllData();
+      setMultiRecipients([{ dest: '', amt: '' }]);
+    } catch (err) {
+      log(`MULTI-PAY ERROR: ${err.message}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applySplit = () => {
+    const total = parseFloat(calcTotal);
+    const n = parseInt(calcN);
+    if (!total || !n) return;
+    const splitAmt = (total / n).toFixed(7);
+    const newRecipients = Array.from({ length: n }, () => ({ dest: '', amt: splitAmt }));
+    setMultiRecipients(newRecipients);
+    log(`CALCULATED SPLIT: ${splitAmt} XLM x ${n}`, "info");
+  };
+
   /* ── VIEW RENDERING ───────────────────────────────────────── */
   const renderContent = () => {
     switch(activeTab) {
@@ -223,9 +287,104 @@ function App() {
                 )}
               </div>
             </div>
-          </div>
-        );
-      case 'tracker':
+            </div>
+          );
+        case 'calculator':
+          return (
+            <div className="enter">
+              <div className="card">
+                <div className="card-corner-br" />
+                <div className="card-tag">➗ Split Bill Calculator</div>
+                <div className="card-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="input-group">
+                      <label className="field-label">Total to Split (XLM)</label>
+                      <input className="input" type="number" value={calcTotal} onChange={e => setCalcTotal(e.target.value)} placeholder="0.00" />
+                    </div>
+                    <div className="input-group">
+                      <label className="field-label">Number of Survivors (N)</label>
+                      <input className="input" type="number" value={calcN} onChange={e => setCalcN(e.target.value)} placeholder="2" />
+                    </div>
+                  </div>
+                  <button className="btn btn--full" onClick={applySplit} style={{ marginBottom: '2rem' }}>
+                    CALCULATE & GENERATE BATCH
+                  </button>
+
+                  <div className="sep" />
+                  <p className="field-label">Batch Recipients</p>
+                  <form onSubmit={handleSplitPay}>
+                    {multiRecipients.map((r, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <input className="input" placeholder="GA..." value={r.dest} onChange={e => {
+                          const newR = [...multiRecipients];
+                          newR[i].dest = e.target.value;
+                          setMultiRecipients(newR);
+                        }} required />
+                        <input className="input" value={r.amt} readOnly />
+                      </div>
+                    ))}
+                    <button className="btn btn--full" type="submit" disabled={loading || !address || multiRecipients.some(r => !r.dest)}>
+                      {loading ? <span className="spinner" /> : 'EXECUTE BATCH UPLINK'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          );
+        case 'faucet':
+          return (
+            <div className="enter">
+              <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+                <div className="card-corner-br" />
+                <div className="card-tag">⛲ Resource Faucet</div>
+                <div className="card-body">
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⛲</div>
+                  <h2 className="site-title" style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Testnet Friendbot</h2>
+                  <p className="field-value" style={{ marginBottom: '2rem' }}>
+                    Request a resupply of 10,000 Testnet XLM. This uplink can be initiated once per day per survivor identity.
+                  </p>
+                  <button className="btn btn--full" onClick={handleFaucet} disabled={faucetLoading || !address}>
+                    {faucetLoading ? <><span className="spinner" /> CONTACTING FRIENDBOT...</> : 'REQUEST RESUPPLY (10,000 XLM)'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        case 'events':
+          return (
+            <div className="enter">
+              <div className="card">
+                <div className="card-corner-br" />
+                <div className="card-tag">▣ Protocol Activity Feed</div>
+                <div className="card-body">
+                  <p className="field-label" style={{ marginBottom: '1.5rem' }}>LIVE SMART CONTRACT NOTIFICATIONS</p>
+                  {donors.length === 0 ? (
+                    <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>AWAITING PROTOCOL EVENTS...</p>
+                  ) : (
+                    <div className="event-feed">
+                      {donors.map((event, i) => (
+                        <div key={i} className="event-item enter" style={{ 
+                          padding: '1rem', 
+                          borderLeft: '2px solid var(--yellow)', 
+                          background: 'rgba(255,195,0,0.03)',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--yellow)', fontSize: '0.8rem', fontWeight: 'bold' }}>✦ TRANSFER_RECOGNIZED</span>
+                            <span className="console-ts">{new Date().toLocaleDateString()}</span>
+                          </div>
+                          <p className="field-value" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+                            Survivor <span style={{ color: 'var(--yellow)' }}>{event.addr}</span> contributed <span style={{ color: 'var(--yellow)' }}>{event.amt} XLM</span> to the Global Pool.
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        case 'tracker':
         return (
           <div className="enter">
             <div className="card">
@@ -308,8 +467,11 @@ function App() {
                   {whales.map((w, idx) => (
                     <div key={idx} className="leaderboard-item">
                       <div className="leaderboard-rank">#{idx+1}</div>
-                      <div className="leaderboard-addr">{w.addr}</div>
-                      <div className="leaderboard-amt">{w.amt.toLocaleString()} XLM</div>
+                      <div className="flex-col" style={{ flex: 1 }}>
+                        <div className="leaderboard-addr" title={w.addr}>{w.displayAddr || w.addr}</div>
+                        <span style={{ fontSize: '0.5rem', opacity: 0.4, letterSpacing: '1px' }}>SOURCE: {w.source || 'LEGACY_CACHE'}</span>
+                      </div>
+                      <div className="leaderboard-amt">{w.amt.toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
                     </div>
                   ))}
                 </div>
@@ -323,7 +485,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <div className="bg-layer"><div className="bg-image" /><div className="bg-gradients" /><div className="bg-vignette" /></div>
+      <div className="bg-layer">
+        <div className="bg-3d">
+          <Spline scene="https://prod.spline.design/To1j6z2qfMCDNQE1/scene.splinecode" />
+        </div>
+        <div className="bg-gradients" />
+        <div className="bg-vignette" />
+      </div>
       
       <div className="app-container">
         <header className="site-header">
@@ -331,39 +499,50 @@ function App() {
             <div className="header-brand">
               <div className="header-brand-row">
                 <svg className="header-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="48" stroke="#ffc300" strokeWidth="2" fill="none" opacity="0.3"/>
-                  <path d="M74.4 32.8L25.7 55.4C24.3 56 24.3 58 25.7 58.6L33.5 62L74.4 43.2V32.8Z" fill="#ffc300"/>
-                  <path d="M74.4 43.2L33.5 62L36.8 63.5L74.4 46V43.2Z" fill="#ff6d00" opacity="0.7"/>
-                  <path d="M74.4 50.6L25.7 73.2C24.3 73.8 24.3 75.8 25.7 76.4L33.5 79.8L74.4 61V50.6Z" fill="#ffc300"/>
-                  <path d="M74.4 61L33.5 79.8L36.8 81.3L74.4 63.8V61Z" fill="#ff6d00" opacity="0.7"/>
+                  <circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="2" fill="none" opacity="0.3"/>
+                  <path d="M74.4 32.8L25.7 55.4C24.3 56 24.3 58 25.7 58.6L33.5 62L74.4 43.2V32.8Z" fill="var(--cyan)"/>
+                  <path d="M74.4 43.2L33.5 62L36.8 63.5L74.4 46V43.2Z" fill="var(--cyan)" opacity="0.5"/>
+                  <path d="M74.4 50.6L25.7 73.2C24.3 73.8 24.3 75.8 25.7 76.4L33.5 79.8L74.4 61V50.6Z" fill="var(--cyan)"/>
+                  <path d="M74.4 61L33.5 79.8L36.8 81.3L74.4 63.8V61Z" fill="var(--cyan)" opacity="0.5"/>
                 </svg>
-                <div><h1 className="site-title">Stellar Network</h1><h1 className="site-title" style={{ fontSize: '1.2rem', opacity: 0.8 }}>Survivor Hub v2.1</h1></div>
+                <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.7, fontWeight: 500, letterSpacing: '2px' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
-            <div className="header-badges"><span className="badge badge--net">⬡ Testnet</span><span className="badge badge--warn">◈ Restricted</span></div>
+            <div className="header-badges"><span className="badge badge--net">Testnet</span><span className="badge badge--warn">Restricted</span></div>
           </div>
           <div className="header-status">
             <span className={`dot ${address ? 'dot--on' : ''}`} />
-            <span className={`status-label ${address ? 'status-label--on' : ''}`}>
-              {address ? `LEVEL 2 UPLINK ACTIVE: ${address.substring(0,12)}...` : 'UPLINK DISCONNECTED'}
-            </span>
+              {address ? (
+                <>
+                  <span style={{ color: '#23d18b', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '1px' }}>OFFICIAL UPLINK ACTIVE: {formatAddress(address, 6, 4)}</span>
+                </>
+              ) : <span style={{ color: '#ff5f5f', fontWeight: 700, letterSpacing: '1px' }}>SYSTEM OFFLINE</span>}
           </div>
         </header>
 
         <main className="survivor-hub">
           <nav className="nav-sidebar">
-            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>📡 Terminal</div>
-            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>◆ Tracker</div>
-            <div className={`nav-item ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>▣ Contract Fund</div>
-            <div className={`nav-item ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>✦ Leaderboard</div>
+            {address && (
+              <div className="balance-pill balance-pill--large" style={{ marginBottom: '1rem', width: '100%', justifyContent: 'center' }}>
+                <span>{parseFloat(balance).toLocaleString()} XLM</span>
+              </div>
+            )}
+            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Terminal</div>
+            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Calculator</div>
+            <div className={`nav-item ${activeTab === 'faucet' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('faucet')}>Resource Faucet</div>
+            <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
+            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>Payment Tracker</div>
+            <div className={`nav-item ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>Contract Fund</div>
+            <div className={`nav-item ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>Network Leaderboard</div>
             <div className="mt-auto">
-              <div className="card card--compact" style={{ padding: '0.8rem', border: '1px solid rgba(255,195,0,0.1)' }}>
-                <span className="field-label">Operator Resources</span>
-                <div className="balance-num" style={{ fontSize: '1.2rem', textAlign: 'left' }}>{parseFloat(balance).toLocaleString()}</div>
-                <div className="field-label" style={{ fontSize: '0.45rem', marginTop: '0.5rem' }}>XLM DETECTED</div>
+              <div className="card card--compact" style={{ padding: '0.8rem', border: '1px solid var(--border)' }}>
+                <span className="field-label">Network Resources</span>
+                <div className="flex-col gap-sm" style={{ marginTop: '0.5rem' }}>
+                  <button className="btn btn--danger" style={{ width: '100%', fontSize: '0.55rem' }} onClick={() => setLogs([])}>Clear Logs</button>
+                </div>
               </div>
               {!address ? (
-                <button className="btn btn--full" onClick={handleConnect} style={{ marginTop: '1rem' }}>LINK OPERATOR</button>
+                <button className="btn btn--full btn--pulse" onClick={handleConnect} style={{ marginTop: '1rem' }}>LINK OPERATOR</button>
               ) : (
                 <button className="btn btn--danger btn--full" onClick={handleDisconnect} style={{ marginTop: '1rem' }}>SEVER UPLINK</button>
               )}
@@ -377,9 +556,9 @@ function App() {
               </div>
               <div className="card card--diag">
                 <div className="card-corner-br" />
-                <div className="card-tag">▣ Diagnostics</div>
+                <div className="card-tag">Diagnostics</div>
                 <div className="card-body">
-                  <div className="console" style={{ height: 'calc(100vh - 400px)' }}>
+                  <div className="console">
                     {logs.map((l, i) => (
                       <div key={i} className={`console-line console-line--${l.type}`}>
                         <span className="console-ts">[{l.ts}]</span>{l.msg}
@@ -394,7 +573,18 @@ function App() {
         </main>
 
         <footer className="site-footer">
-          <p className="footer-line">Survivor Network Hub &nbsp;│&nbsp; Soroban Powered &nbsp;│&nbsp; System v2.1.0</p>
+          <div className="footer-content">
+            <span className="copyright">© 2024 STELLAR NETWORK OPERATIONS. ALL RIGHTS RESERVED.</span>
+            <div className="tech-stack">
+              <span>STELLAR</span>
+              <span className="dot-sep">•</span>
+              <span>SOROBAN</span>
+              <span className="dot-sep">•</span>
+              <span>REACT</span>
+              <span className="dot-sep">•</span>
+              <span>SPLINE 3D</span>
+            </div>
+          </div>
         </footer>
       </div>
 

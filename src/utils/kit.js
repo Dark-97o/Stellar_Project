@@ -32,42 +32,48 @@ export class StellarWalletsKit {
 
   async getAddress(walletType = ALLOWED_WALLETS.FREIGHTER) {
     try {
+      let rawResult;
       switch (walletType) {
         case ALLOWED_WALLETS.ALBEDO:
-          // Albedo usually provides a global or can be used via web trigger
-          // If no extension, it opens a popup. 
-          if (typeof window.albedo === 'undefined') {
-             console.warn("Albedo extension missing, falling back to web intent.");
-          }
           const albedo = await import('@albedo-link/intent').then(m => m.default).catch(() => window.albedo);
           if (!albedo) throw new Error("ALBEDO_PROTOCOL_UNAVAILABLE");
-          const { pubkey } = await albedo.publicKey({
-            token: 'SURVIVOR_HUB_SESSION'
-          });
-          return { address: pubkey };
+          const albedoRes = await albedo.publicKey({ token: 'SURVIVOR_HUB_SESSION' });
+          rawResult = albedoRes.pubkey;
+          break;
 
         case ALLOWED_WALLETS.XBULL:
           if (typeof window.xBullWallet === 'undefined') throw new Error("XBULL_UPLINK_NOT_DETECTED");
-          const xbullAddress = await window.xBullWallet.getPublicKey();
-          return { address: xbullAddress };
+          rawResult = await window.xBullWallet.getPublicKey();
+          break;
 
         case ALLOWED_WALLETS.RABE:
           if (typeof window.rabe === 'undefined') throw new Error("RABE_UPLINK_NOT_DETECTED");
-          const rabeAddress = await window.rabe.getPublicKey();
-          return { address: rabeAddress };
+          rawResult = await window.rabe.getPublicKey();
+          break;
 
         case ALLOWED_WALLETS.HANA:
           if (typeof window.hana === 'undefined') throw new Error("HANA_UPLINK_NOT_DETECTED");
-          const hanaAddress = await window.hana.stellar.getPublicKey();
-          return { address: hanaAddress };
+          rawResult = await window.hana.stellar.getPublicKey();
+          break;
 
         case ALLOWED_WALLETS.FREIGHTER:
         default:
           const connected = await isConnected();
           if (!connected) throw new Error("FREIGHTER_UPLINK_NOT_DETECTED");
-          const address = await requestAccess();
-          return { address };
+          rawResult = await requestAccess();
+          break;
       }
+
+      // Defense: Ensure we always return a string, even if the wallet returns an object { address: "..." }
+      const finalAddress = typeof rawResult === 'object' && rawResult !== null 
+        ? (rawResult.address || rawResult.publicKey || rawResult.pubkey || JSON.stringify(rawResult))
+        : rawResult;
+
+      if (!finalAddress || typeof finalAddress !== 'string') {
+        throw new Error("MALFORMED_UPLINK_DATA");
+      }
+
+      return { address: finalAddress };
     } catch (error) {
       console.error(`Kit [${walletType}] Error:`, error);
       throw error;
