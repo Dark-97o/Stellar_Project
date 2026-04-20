@@ -80,6 +80,7 @@ function App() {
   const [dest, setDest] = useState('');
   const [amt, setAmt] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [donationTxHash, setDonationTxHash] = useState('');
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletType, setWalletType] = useState(null);
 
@@ -118,7 +119,7 @@ function App() {
       setWhales(data);
     };
     loadWhales();
-    const interval = setInterval(loadWhales, 60000);
+    const interval = setInterval(loadWhales, 3600000); // Sync once per hour
     return () => clearInterval(interval);
   }, []);
 
@@ -143,9 +144,6 @@ function App() {
       setFundTotal(relief.total);
       setFundGoal(relief.goal || 10000);
       setDonors(relief.donors);
-
-      const netWhales = await fetchNetworkWhales(log);
-      setWhales(netWhales);
     } catch (e) {
       console.warn("Sync Error:", e);
     }
@@ -211,12 +209,18 @@ function App() {
       
       if (res.hash) {
         setTxHash(res.hash);
+        setDonationTxHash(res.hash);
         log(`DONATION FINALIZED VIA CONTRACT. HASH: ${res.hash.substring(0,16)}...`, "ok");
       } else {
         log(`DONATION FINALIZED VIA CONTRACT.`, "ok");
       }
       
-      await syncAllData();
+      // Optimistic update: immediately show the donated amount in the progress bar
+      setFundTotal(prev => parseFloat((prev + amount).toFixed(2)));
+      log(`POOL UPDATED: +${amount} XLM. CONFIRMING ON-CHAIN IN 5s...`, "info");
+
+      // Confirmed sync after 5s to let Soroban RPC and contract storage settle
+      setTimeout(() => syncAllData(), 5000);
     } catch (err) {
       log(`CONTRACT_ERR: ${err.message}`, "err");
     } finally {
@@ -369,22 +373,38 @@ function App() {
                     <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>AWAITING PROTOCOL EVENTS...</p>
                   ) : (
                     <div className="event-feed">
-                      {donors.map((event, i) => (
-                        <div key={i} className="event-item enter" style={{ 
-                          padding: '1rem', 
-                          borderLeft: '2px solid var(--yellow)', 
-                          background: 'rgba(255,195,0,0.03)',
-                          marginBottom: '0.75rem'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--yellow)', fontSize: '0.8rem', fontWeight: 'bold' }}>✦ TRANSFER_RECOGNIZED</span>
-                            <span className="console-ts">{new Date().toLocaleDateString()}</span>
+                      {donors.map((event, i) => {
+                        const isWithdrawal = event.type === 'WITHDRAWAL';
+                        return (
+                          <div key={i} className="event-item enter" style={{ 
+                            padding: '1rem', 
+                            borderLeft: `2px solid ${isWithdrawal ? '#ff6b6b' : 'var(--yellow)'}`, 
+                            background: isWithdrawal ? 'rgba(255,80,80,0.04)' : 'rgba(255,195,0,0.03)',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: isWithdrawal ? '#ff6b6b' : 'var(--yellow)', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                {isWithdrawal ? '⬇ WITHDRAWAL_DETECTED' : '✦ TRANSFER_RECOGNIZED'}
+                              </span>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <span className="console-ts">{new Date().toLocaleDateString()}</span>
+                                {event.txHash && (
+                                  <button
+                                    onClick={() => window.open(getExplorerUrl(event.txHash), '_blank')}
+                                    style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '3px' }}
+                                  >TX↗</button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="field-value" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+                              {isWithdrawal
+                                ? <>Admin withdrew <span style={{ color: '#ff6b6b' }}>{event.amt} XLM</span> to <span style={{ color: '#ff6b6b' }}>{event.addr}</span>.</>
+                                : <>Survivor <span style={{ color: 'var(--yellow)' }}>{event.addr}</span> contributed <span style={{ color: 'var(--yellow)' }}>{event.amt} XLM</span> to the Global Pool.</>
+                              }
+                            </p>
                           </div>
-                          <p className="field-value" style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
-                            Survivor <span style={{ color: 'var(--yellow)' }}>{event.addr}</span> contributed <span style={{ color: 'var(--yellow)' }}>{event.amt} XLM</span> to the Global Pool.
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -447,21 +467,62 @@ function App() {
                     DONATE 100
                   </button>
                 </div>
-                {txHash && activeTab === 'fund' && (
+                {donationTxHash && (
                   <div className="tx-result" style={{ marginTop: '1.5rem' }}>
                     <div className="sep" />
-                    <p className="tx-hash" style={{ fontSize: '0.65rem' }}>STATUS: SYNCED | HASH: {txHash.substring(0,16)}...</p>
-                    <button className="btn btn--ghost btn--full" onClick={() => window.open(getExplorerUrl(txHash), '_blank')}>VERIFY CONTRACT CALL ↗</button>
+                    <p className="tx-hash" style={{ fontSize: '0.65rem' }}>STATUS: SYNCED | HASH: {donationTxHash.substring(0,20)}...</p>
+                    <button
+                      className="btn btn--ghost btn--full"
+                      onClick={() => window.open(getExplorerUrl(donationTxHash), '_blank')}
+                    >
+                      VIEW TRANSACTION ON STELLAR EXPERT ↗
+                    </button>
                   </div>
                 )}
                 <div className="sep" style={{ margin: '1.5rem 0' }} />
                 <p className="field-label" style={{ marginBottom: '1rem' }}>Latest Smart Contract Events</p>
                 <div className="leaderboard-list">
+                  {donors.length === 0 && (
+                    <div style={{ padding: '1rem', opacity: 0.5, fontSize: '0.75rem', textAlign: 'center' }}>
+                      NO CONTRACT EVENTS DETECTED
+                    </div>
+                  )}
                   {donors.map((d, i) => (
-                    <div key={i} className="leaderboard-item" style={{ padding: '0.6rem 1rem' }}>
-                      <span className="leaderboard-rank">#</span>
-                      <span className="leaderboard-addr" style={{ fontSize: '0.7rem' }}>{d.addr}</span>
-                      <span className="leaderboard-amt" style={{ fontSize: '0.9rem' }}>{d.amt} XLM</span>
+                    <div key={i} className="leaderboard-item" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                        background: d.type === 'WITHDRAWAL' ? 'rgba(255,80,80,0.15)' : 'rgba(80,255,150,0.12)',
+                        color: d.type === 'WITHDRAWAL' ? '#ff6b6b' : '#4ade80',
+                        border: `1px solid ${d.type === 'WITHDRAWAL' ? '#ff6b6b44' : '#4ade8044'}`,
+                        flexShrink: 0
+                      }}>
+                        {d.type || 'EVENT'}
+                      </span>
+                      <span className="leaderboard-addr" style={{ fontSize: '0.68rem', flex: 1 }}>{d.addr}</span>
+                      <span className="leaderboard-amt" style={{ fontSize: '0.85rem', flexShrink: 0 }}>
+                        {d.type === 'WITHDRAWAL' ? '-' : '+'}{d.amt} XLM
+                      </span>
+                      {d.txHash && (
+                        <button
+                          onClick={() => window.open(getExplorerUrl(d.txHash), '_blank')}
+                          style={{
+                            background: 'none',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: 'rgba(255,255,255,0.6)',
+                            cursor: 'pointer',
+                            fontSize: '0.6rem',
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '3px',
+                            flexShrink: 0
+                          }}
+                          title={d.txHash}
+                        >
+                          TX↗
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -83,41 +83,46 @@ export class StellarWalletsKit {
   async signTransaction(xdr, options) {
     const { walletType = ALLOWED_WALLETS.FREIGHTER, networkPassphrase, address } = options;
 
+    // Helper: Freighter v6+ returns an object { signedTxXdr: "..." }
+    // Older versions return a raw string. This normalizes both cases.
+    const extractXdr = (result) => {
+      if (typeof result === 'string') return result;
+      if (result && typeof result === 'object') {
+        return result.signedTxXdr || result.xdr || result.signed_envelope_xdr || null;
+      }
+      return null;
+    };
+
     switch (walletType) {
       case ALLOWED_WALLETS.ALBEDO:
         const albedo = await import('@albedo-link/intent').then(m => m.default).catch(() => window.albedo);
-        const { signed_envelope_xdr } = await albedo.tx({
+        const albedoRes = await albedo.tx({
           xdr,
           network: this.network.toLowerCase()
         });
-        return { signedTxXdr: signed_envelope_xdr };
+        return { signedTxXdr: extractXdr(albedoRes) || albedoRes.signed_envelope_xdr };
 
       case ALLOWED_WALLETS.XBULL:
-        const signedXdr = await window.xBullWallet.sign({
+        const xbullRes = await window.xBullWallet.sign({
           xdr,
           publicKey: address,
           network: networkPassphrase
         });
-        return { signedTxXdr: signedXdr };
+        return { signedTxXdr: extractXdr(xbullRes) };
 
       case ALLOWED_WALLETS.RABE:
-        const rabeSignedXdr = await window.rabe.signTransaction(xdr, { 
-          networkPassphrase 
-        });
-        return { signedTxXdr: rabeSignedXdr };
+        const rabeRes = await window.rabe.signTransaction(xdr, { networkPassphrase });
+        return { signedTxXdr: extractXdr(rabeRes) };
 
       case ALLOWED_WALLETS.HANA:
-        const hanaSignedXdr = await window.hana.stellar.signTransaction(xdr, { 
-          networkPassphrase 
-        });
-        return { signedTxXdr: hanaSignedXdr };
+        const hanaRes = await window.hana.stellar.signTransaction(xdr, { networkPassphrase });
+        return { signedTxXdr: extractXdr(hanaRes) };
 
       case ALLOWED_WALLETS.FREIGHTER:
       default:
-        const freighterSignedXdr = await signTransaction(xdr, { 
-          networkPassphrase 
-        });
-        return { signedTxXdr: freighterSignedXdr };
+        const freighterRes = await signTransaction(xdr, { networkPassphrase });
+        // Freighter v6 returns { signedTxXdr: string }, older returns string directly
+        return { signedTxXdr: extractXdr(freighterRes) };
     }
   }
 }

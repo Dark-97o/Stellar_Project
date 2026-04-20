@@ -40,6 +40,12 @@ export const ErrorTypes = {
 };
 
 /**
+ * Build a StellarExpert transaction explorer link
+ */
+export const getExplorerUrl = (hash) =>
+  `https://stellar.expert/explorer/testnet/tx/${hash}`;
+
+/**
  * Connects via StellarWalletsKit (Multi-wallet support)
  */
 export const connectWallet = async (walletType) => {
@@ -106,17 +112,29 @@ export const fetchAccountHistory = async (publicKey) => {
     const response = await horizonServer.operations()
       .forAccount(publicKey)
       .order("desc")
-      .limit(15)
+      .limit(20)
       .call();
     
     return response.records
-      .filter(rec => rec.type === 'payment' || rec.type === 'create_account')
+      .filter(rec =>
+        rec.type === 'payment' ||
+        rec.type === 'create_account' ||
+        rec.type === 'invoke_host_function' // Soroban contract calls
+      )
       .map(rec => {
+        if (rec.type === 'invoke_host_function') {
+          return {
+            id: rec.id,
+            addr: `Contract: ${CONTRACT_ID.substring(0, 8)}...`,
+            amt: 'CONTRACT CALL',
+            status: 'success',
+            hash: rec.transaction_hash
+          };
+        }
         const isCreation = rec.type === 'create_account';
         const amount = isCreation ? rec.starting_balance : rec.amount;
         const target = isCreation ? rec.account : rec.to;
         const source = isCreation ? (rec.funder || rec.from) : rec.from;
-
         return {
           id: rec.id,
           addr: target === publicKey ? `From: ${source.substring(0,6)}...` : `To: ${target.substring(0,6)}...`,
@@ -125,66 +143,124 @@ export const fetchAccountHistory = async (publicKey) => {
           hash: rec.transaction_hash
         };
       })
-      .slice(0, 5);
+      .slice(0, 8);
   } catch (error) {
     console.error("History Fetch Error:", error);
     return [];
   }
 };
 
+
 /**
  * SOROBAN: Read Data from Contract (Level 2)
  */
 export const fetchReliefFundStats = async () => {
+  const DEFAULT_GOAL = 100; // Fallback if contract can't be read
+  const NATIVE_SAC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+  // Valid 56-char account for simulation (simulation never submits real txs)
+  const DUMMY_PK = "GB2VHOGXRWAF53JHDTBXYV3FZUNSTTNCTAVA2M5NLVXPFDVYDSVE2HBJ";
+
+  let total = 0;
+  let goal = DEFAULT_GOAL;
+  let donors = [];
+
+  // Read the on-chain goal from the contract's get_stats simulation
   try {
-    // 1. Fetch Contract State via Simulation
     const contract = new StellarSdk.Contract(CONTRACT_ID);
-    const tx = new StellarSdk.TransactionBuilder(
-      new StellarSdk.Account("GDBLVEG3X3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3K3", "0"), 
-      { fee: "100", networkPassphrase: NETWORK_PASSPHRASE }
-    )
+    const dummyAccount = new StellarSdk.Account(DUMMY_PK, "0");
+    const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+      fee: "100",
+      networkPassphrase: NETWORK_PASSPHRASE
+    })
       .addOperation(contract.call("get_stats"))
-      .setTimeout(0)
+      .setTimeout(30)  // 0 can cause immediately-expired transactions
       .build();
-
     const sim = await rpcServer.simulateTransaction(tx);
-    let total = 0;
-    let goal = 10000;
 
-    if (sim.result) {
+    // Explicit check for RPC-level errors (sim.error is set when simulation fails)
+    if (sim.error) {
+      console.warn("[fetchReliefFundStats] get_stats sim error:", sim.error);
+    } else if (sim.result?.retval) {
       const stats = StellarSdk.scValToNative(sim.result.retval);
-      total = Number(stats.total) / 10000000; // Assuming 7 decimals for XLM stroops
-      goal = Number(stats.goal) / 10000000;
+      // i128 comes back as BigInt — Number() is safe for XLM-scale values
+      const goalStroops = typeof stats.goal === 'bigint' ? Number(stats.goal) : stats.goal;
+      const onChainGoal = goalStroops / 10000000;
+      console.log("[fetchReliefFundStats] On-chain goal:", onChainGoal, "XLM");
+      if (onChainGoal > 0) goal = onChainGoal;
+    } else {
+      console.warn("[fetchReliefFundStats] get_stats returned no retval. sim:", sim);
     }
+  } catch (e) {
+    console.warn("[fetchReliefFundStats] get_stats simulation threw:", e.message);
+  }
 
-    // 2. Fetch Latest Donation Events
+  try {
     const latestLedger = await rpcServer.getLatestLedger();
     const eventResponse = await rpcServer.getEvents({
-      startLedger: latestLedger.sequence - 10000, // Look back ~1 day
-      filters: [{
-        type: "contract",
-        contractIds: [CONTRACT_ID]
-      }],
-      limit: 10
+      startLedger: Math.max(1, latestLedger.sequence - 10000),
+      filters: [{ type: "contract", contractIds: [CONTRACT_ID] }],
+      limit: 50
     });
 
-    const donors = eventResponse.events
-      .filter(e => e.type === "contract")
-      .map(e => {
-        const data = StellarSdk.scValToNative(e.value);
-        return {
-          addr: `${data.donor.substring(0, 8)}...${data.donor.slice(-4)}`,
-          amt: Number(data.amount) / 10000000
-        };
-      })
-      .slice(0, 5);
+    let donatedTotal = 0;
+    let withdrawnTotal = 0;
 
-    return { total, goal, donors };
-  } catch (error) {
-    console.error("Relief Stats Error:", error);
-    return { total: 0, goal: 10000, donors: [] };
+    eventResponse.events.forEach(e => {
+      try {
+        const data = StellarSdk.scValToNative(e.value);
+        const amtXlm = Number(data.amount || 0) / 10000000;
+        if (data.donor) {
+          // DonationEvent
+          donatedTotal += amtXlm;
+          donors.push({
+            addr: `${data.donor.substring(0, 8)}...${data.donor.slice(-4)}`,
+            amt: amtXlm,
+            type: 'DONATION',
+            txHash: e.txHash || null
+          });
+        } else if (data.recipient) {
+          // WithdrawalEvent — include in list AND subtract from pool
+          withdrawnTotal += amtXlm;
+          donors.push({
+            addr: `${data.recipient.substring(0, 8)}...${data.recipient.slice(-4)}`,
+            amt: amtXlm,
+            type: 'WITHDRAWAL',
+            txHash: e.txHash || null
+          });
+        }
+      } catch { /* skip malformed events */ }
+    });
+
+    // Net current pool = donations - withdrawals
+    total = Math.max(0, donatedTotal - withdrawnTotal);
+    donors = donors.slice(0, 5); // 5 most recent donors for display
+
+  } catch {
+    // FALLBACK: SAC balance query via Soroban simulation
+    try {
+      const sacContract = new StellarSdk.Contract(NATIVE_SAC);
+      const dummyAccount = new StellarSdk.Account(DUMMY_PK, "0");
+      const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+        fee: "100",
+        networkPassphrase: NETWORK_PASSPHRASE
+      })
+        .addOperation(
+          sacContract.call("balance",
+            StellarSdk.nativeToScVal(CONTRACT_ID, { type: "address" })
+          )
+        )
+        .setTimeout(0)
+        .build();
+      const sim = await rpcServer.simulateTransaction(tx);
+      if (sim.result?.retval) {
+        total = Number(StellarSdk.scValToNative(sim.result.retval)) / 10000000;
+      }
+    } catch { total = 0; }
   }
+
+  return { total, goal, donors };
 };
+
 
 /**
  * SOROBAN: Write Data to Contract (Level 2)
@@ -199,20 +275,24 @@ export const invokeContractDonate = async (publicKey, amount, onLog, walletType)
     const contract = new StellarSdk.Contract(CONTRACT_ID);
     const operation = contract.call(
       "donate", 
-      StellarSdk.Address.fromString(publicKey).toScVal(), // Parameter 1: donor
-      StellarSdk.nativeToScVal(amount, { type: "i128" })    // Parameter 2: amount
+      StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+      StellarSdk.nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: "i128" })
     );
     
-    // 2. Build Transaction
-    const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
-      fee: StellarSdk.BASE_FEE,
+    // 2. Build Base Transaction
+    let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: "100", // Placeholder fee, will be adjusted by prepareTransaction
       networkPassphrase: NETWORK_PASSPHRASE,
     })
       .addOperation(operation)
       .setTimeout(30)
       .build();
 
-    // 3. Simple Transaction status tracking (Pending)
+    // 3. Mandatory Preparation: Simulation & Resource Adjustment
+    onLog("SIMULATING UPLINK RESOURCES...", "info");
+    tx = await rpcServer.prepareTransaction(tx);
+    
+    // 4. Awaiting Signature
     onLog("UPLINK PENDING: AWAITING SIGNATURE...", "warn");
     
     const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
@@ -222,9 +302,47 @@ export const invokeContractDonate = async (publicKey, amount, onLog, walletType)
     });
     
     onLog("SIGNATURE ACQUIRED. BROADCASTING TO SOROBAN RPC...", "ok");
-    const result = await rpcServer.sendTransaction(StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE));
     
-    return result;
+    // DIRECT RPC UPLINK: Bypasses SDK serialization to avoid 'e.switch' error
+    if (typeof signedTxXdr !== 'string') {
+      throw new Error(`INVALID_SIGNATURE: Received ${typeof signedTxXdr} instead of string.`);
+    }
+
+    try {
+      const rpcUrl = 'https://soroban-testnet.stellar.org'; // Removed trailing slash
+      const rpcResponse = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: Date.now(),
+          method: 'sendTransaction',
+          params: { transaction: signedTxXdr }
+        })
+      });
+
+      if (!rpcResponse.ok) {
+        throw new Error(`UPLINK_HTTP_ERR: ${rpcResponse.status} ${rpcResponse.statusText}`);
+      }
+
+      const rpcResult = await rpcResponse.json();
+      
+      if (rpcResult.error) {
+        throw new Error(`RPC_ERR ${rpcResult.error.code}: ${rpcResult.error.message}`);
+      }
+
+      const data = rpcResult.result;
+      if (data.status === 'ERROR') {
+        throw new Error(`UPLINK_REJECTED: ${data.errorResultXdr || 'Transaction Logic Failed'}`);
+      }
+
+      return { hash: data.hash };
+    } catch (rpcErr) {
+      throw new Error(`UPLINK_FETCH_FAILURE: ${rpcErr.message}`);
+    }
   } catch (error) {
     throw error;
   }
@@ -256,60 +374,51 @@ const WHALE_REGISTRY = [
  */
 export const fetchNetworkWhales = async (onLog) => {
   try {
-    if (onLog) onLog("INITIATING TIER-1 ANALYTICS UPLINK...", "info");
-    
     // TIER 1: Analytical Data from StellarExpert (Live Rich List)
     const response = await fetch("https://api.stellar.expert/explorer/testnet/asset/XLM/holders?order=desc&limit=10", {
       mode: 'cors'
     });
     
-    if (!response.ok) throw new Error("UPSTREAM_OFFLINE");
-    const data = await response.json();
-    const records = data._embedded?.records || [];
-    
-    if (records.length > 0) {
-      if (onLog) onLog("TIER-1 UPLINK SYNCHRONIZED: SUCCESS.", "ok");
-      return records.map(r => ({
-        addr: r.address,
-        displayAddr: `${r.address.substring(0, 8)}...${r.address.slice(-4)}`,
-        amt: parseFloat(r.balance) / 10000000,
-        source: 'ST_EXPERT'
-      }));
+    if (response.ok) {
+      const data = await response.json();
+      const records = data._embedded?.records || [];
+      
+      if (records.length > 0) {
+        if (onLog) onLog("LEADERBOARD SYNCED: TIER-1 ANALYTICS (Rich List Source)", "ok");
+        return records.map(r => ({
+          addr: r.address,
+          displayAddr: `${r.address.substring(0, 8)}...${r.address.slice(-4)}`,
+          amt: parseFloat(r.balance) / 10000000,
+          source: 'ST_EXPERT'
+        }));
+      }
     }
   } catch (error) {
-    if (onLog) onLog("TIER-1 RESTRICTED. INITIATING TIER-2 DIRECT PROBE...", "warn");
+    // Silent catch, proceed to Tier 2
   }
 
   try {
     // TIER 2: Dynamic Discovery Protocol (Direct Ledger Audit)
-    // This phase scans recent network activity to find active 'whales' moving value
-    if (onLog) onLog("TIER-1 RESTRICTED. INITIATING DYNAMIC DISCOVERY...", "warn");
-    
     const paymentRecords = await horizonServer.payments()
       .limit(50)
       .order("desc")
       .call();
     
-    // Extract involved accounts from recent high-activity operations
     const activePool = new Set();
     paymentRecords.records.forEach(p => {
       if (p.from) activePool.add(p.from);
       if (p.to) activePool.add(p.to);
     });
 
-    // Merge with known icons and ensure they are prioritized in the audit set
     const totalPool = Array.from(new Set([...WHALE_REGISTRY, ...activePool]));
     
-    if (onLog) onLog(`AUDITING ${totalPool.length} IDENTITIES FOR RECENT VOLUME...`, "info");
-
-    // Batch resolve balances for the discovery pool (Prioritizing known icons first)
     const discoveryData = await Promise.all(totalPool.slice(0, 30).map(async (addr) => {
       try {
         const account = await horizonServer.loadAccount(addr);
         const bal = account.balances.find(b => b.asset_type === 'native')?.balance || "0";
         const balanceNum = parseFloat(bal);
         
-        if (balanceNum < 10) return null; // Filter out noise/small accounts
+        if (balanceNum < 10) return null; 
 
         return {
           addr,
@@ -325,17 +434,15 @@ export const fetchNetworkWhales = async (onLog) => {
     const validDiscovery = discoveryData.filter(w => w !== null).sort((a, b) => b.amt - a.amt);
     
     if (validDiscovery.length > 0) {
-      if (onLog) onLog(`DISCOVERY PROTOCOL COMPLETE: ${validDiscovery.length} WHALES SYNCED.`, "ok");
+      if (onLog) onLog(`LEADERBOARD SYNCED: TIER-2 DYNAMIC DISCOVERY (${validDiscovery.length} Active Whales)`, "ok");
       return validDiscovery.slice(0, 8);
     }
-
   } catch (error) {
-    if (onLog) onLog("DISCOVERY PROTOCOL FAILED. REVERTING TO TIER-3 FAIL-SAFE...", "err");
-    console.error("Discovery Error:", error);
+    // Proceed to Tier 3
   }
 
   // TIER 3: Fail-safe Registry 
-  if (onLog) onLog("TIER-3 ACTIVE: EMERGENCY TELEMETRY ENGAGED.", "info");
+  if (onLog) onLog("LEADERBOARD SYNCED: TIER-3 FALLBACK (Registry Protocol)", "warn");
   return WHALE_REGISTRY.slice(0, 8).map((addr, i) => ({
     addr,
     displayAddr: `${addr.substring(0, 8)}...${addr.slice(-4)}`,
@@ -427,4 +534,3 @@ export const sendMultiPayment = async (sourcePublicKey, payments, onLog, walletT
   }
 };
 
-export const getExplorerUrl = (hash) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
