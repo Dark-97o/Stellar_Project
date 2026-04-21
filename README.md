@@ -2,7 +2,7 @@
 
 A decentralized payment terminal for the **Stellar Testnet** built with React + Vite. Connect your [Freighter wallet](https://www.freighter.app/), view your XLM balance, and send payments — all through a dystopian-themed terminal interface.
 
-<img width="1870" height="958" alt="Screenshot 2026-04-12 121044" src="https://github.com/user-attachments/assets/23928d75-d48e-4dc9-9593-d4a35ed988a3" />
+<img width="1863" height="952" alt="image" src="https://github.com/user-attachments/assets/d13c621a-d1f8-46cc-a441-93cf258678b1" />
 
 ---
 
@@ -105,36 +105,31 @@ The app will be available at **http://localhost:5173**
 
 ### Wallet Connected State
 
-After clicking "Link Freighter" and approving the connection, the wallet public key is displayed and the status indicator turns active.
-
-<img width="587" height="278" alt="Screenshot 2026-04-12 115746" src="https://github.com/user-attachments/assets/eed6ed2a-eb3d-4436-abea-8a2ac5449a61" />
+<img width="565" height="113" alt="Screenshot 2026-04-21 100301" src="https://github.com/user-attachments/assets/fb88409e-f79c-4acc-bfc5-d1fe9705492e" />
 
 ### Balance Displayed
 
-The balance card shows your current XLM balance in large Orbitron font, fetched directly from the Stellar Horizon Testnet API.
-
-<img width="620" height="270" alt="Screenshot 2026-04-12 115806" src="https://github.com/user-attachments/assets/81b9f8f1-8d98-4977-8e44-6981e9e26f93" />
-
+<img width="546" height="582" alt="image" src="https://github.com/user-attachments/assets/a6dcabe5-0e62-4a12-91e8-6eca2cae6f57" />
 
 ### Successful Testnet Transaction
 
-After submitting a transfer, the transaction is signed via Freighter and submitted to the Stellar Testnet. A success confirmation appears with the transaction hash.
-
-<img width="865" height="391" alt="Screenshot 2026-04-12 120227" src="https://github.com/user-attachments/assets/a87ba249-0658-441f-85b0-641fc661c089" />
-
-<img width="1402" height="909" alt="Screenshot 2026-04-12 120753" src="https://github.com/user-attachments/assets/6d472179-0fdd-434d-a937-a8637f33e388" />
+<img width="1791" height="944" alt="image" src="https://github.com/user-attachments/assets/65e13602-7263-405e-aacc-7e3840ebe495" />
 
 ### Transaction Result
 
-<img width="1288" height="775" alt="Screenshot 2026-04-12 120811" src="https://github.com/user-attachments/assets/99ea2086-2f77-46dc-905d-09687c0897bb" />
-
-The completed transaction result shows the full hash and a link to view the transaction on Stellar Expert. The diagnostics panel logs every step of the process.
+<img width="789" height="392" alt="image" src="https://github.com/user-attachments/assets/555d4525-ffa1-426c-884f-d4e869ab2efb" />
 
 ### Multi-Wallet Gateway
-The "Link Operator" interface allows selection between multiple uplink protocols, ensuring accessibility regardless of the operator's preferred extension.
+
+<img width="568" height="638" alt="image" src="https://github.com/user-attachments/assets/b5ab111c-1f87-4d72-a376-876a15900c36" />
 
 ### Deployment Environment
-The Hub is optimized for static deployment, providing high-density telemetry across various tactical resolutions.
+
+<img width="1142" height="441" alt="Screenshot 2026-04-21 001619" src="https://github.com/user-attachments/assets/ac6b3b24-894f-4019-b10e-cdbada59ad70" />
+
+<img width="1177" height="530" alt="Screenshot 2026-04-21 001601" src="https://github.com/user-attachments/assets/f5cf6b75-0aa2-4217-87d8-b571a8b72db7" />
+
+<img width="1851" height="950" alt="Screenshot 2026-04-20 233857" src="https://github.com/user-attachments/assets/d7bf2631-e696-48d7-bdaf-ee462e8b4281" />
 
 ---
 
