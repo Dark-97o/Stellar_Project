@@ -73,6 +73,8 @@ function App() {
   const [balance, setBalance] = useState('0.00');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('terminal');
+  const [isLanding, setIsLanding] = useState(true);
+  const [isZooming, setIsZooming] = useState(false);
   const [logs, setLogs] = useState([
     { msg: 'SURVIVOR HUB v2.1 ONLINE. MULTI-UPLINK ESTABLISHED.', type: 'info', ts: new Date().toLocaleTimeString() },
   ]);
@@ -692,8 +694,92 @@ function App() {
     }
   };
 
+  const handleGetStarted = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Ensure we zoom from the hero
+    setIsZooming(true);
+    setTimeout(() => {
+      setIsLanding(false);
+    }, 2200);
+  };
+
+  const services = [
+    { title: 'GLOBAL PAYMENTS', desc: 'Secure, lightning-fast XLM transfers across the Stellar ledger with real-time verification.' },
+    { title: 'BATCH COMMAND', desc: 'Execute complex multi-recipient payment scripts in a single operation with per-target status.' },
+    { title: 'SOROBAN PROTOCOLS', desc: 'Engage with smart-contract-governed relief funds and community donation systems.' },
+    { title: 'NETWORK INSIGHTS', desc: 'Deep-dive ledger analytics, account history, and real-time network whale tracking.' },
+    { title: 'TACTICAL CALCULATOR', desc: 'Built-in precision tools for splitting bills and calculating resource distribution.' },
+    { title: 'SECURE UPLINK', desc: 'Advanced multi-wallet integration supporting Freighter, Hana, and Rabe identity kits.' },
+  ];
+
+  if (isLanding) {
+    return (
+      <div className={`landing-viewport ${isZooming ? 'zoom-active' : ''}`}>
+        <div className="zoom-fade-overlay" />
+        <div className="landing-wrapper">
+          <video 
+            className="landing-bg-video" 
+            autoPlay 
+            muted 
+            loop 
+            playsInline
+            src="/img/vidbg.mov"
+          />
+          
+          <section className="landing-section hero-section">
+            <div className="landing-content cinemax-layout">
+              <div className="hero-upper-zone">
+                <div className="hero-text-pane">
+                  <h1 className="hero-title">
+                    COMMAND THE <br />
+                    <span className="text-cyan">STELLAR NETWORK</span>
+                  </h1>
+                  <p className="hero-subtitle">Secure, lighting-fast, global terminal uplink.</p>
+                  <button className="pill-btn" onClick={handleGetStarted}>
+                    GET STARTED <span className="arrow">→</span>
+                  </button>
+                </div>
+
+                <div className="hero-visual-pane">
+                  <div className="pc-container">
+                    <div className="quarter-arc" />
+                    <img src="/img/pc.png" alt="Terminal" className="pc-image" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="hero-lower-zone">
+                <div className="feature-row">
+                  {services.map((s, i) => (
+                    <div key={i} className="feature-item card">
+                      <div className="card-scanner" />
+                      <h3 className="feature-title">{s.title}</h3>
+                      <p className="feature-desc">{s.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer className="site-footer" style={{ padding: '2rem 4rem', background: '#000', borderTop: '1px solid var(--border)' }}>
+            <div className="footer-content">
+              <div>© 2026 VAULT-TEC INDUSTRIES <span className="dot-sep">•</span> STELLAR MANAGEMENT HUB</div>
+              <div className="tech-stack">
+                <span>SOROBAN</span>
+                <span className="dot-sep">•</span>
+                <span>REACT</span>
+                <span className="dot-sep">•</span>
+                <span>SPLINE 3D</span>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="app-shell">
+    <div className="app-shell enter">
       <div className="bg-layer">
         <div className="bg-3d">
           <Spline scene="https://prod.spline.design/To1j6z2qfMCDNQE1/scene.splinecode" />
