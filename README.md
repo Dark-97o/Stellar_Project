@@ -135,18 +135,18 @@ The app will be available at **http://localhost:5173**
 
 ### Test Cases Passed
 
-[ INSERT TEST CASES PASSED SCREENSHOT HERE ]
+<img width="799" height="213" alt="Screenshot 2026-04-21 230226" src="https://github.com/user-attachments/assets/58871cb4-a8b0-4c67-9e1b-dae48466e966" />
 
 ### Demo Video
 
-[ INSERT DEMO VIDEO HERE ]
+
 
 ### Deployment Environment
 
 <img width="1142" height="441" alt="Screenshot 2026-04-21 001619" src="https://github.com/user-attachments/assets/ac6b3b24-894f-4019-b10e-cdbada59ad70" />
-
+<br>
 <img width="1177" height="530" alt="Screenshot 2026-04-21 001601" src="https://github.com/user-attachments/assets/f5cf6b75-0aa2-4217-87d8-b571a8b72db7" />
-
+<br>
 <img width="1851" height="950" alt="Screenshot 2026-04-20 233857" src="https://github.com/user-attachments/assets/d7bf2631-e696-48d7-bdaf-ee462e8b4281" />
 
 ---
