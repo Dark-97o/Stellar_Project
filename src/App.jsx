@@ -317,8 +317,7 @@ function App() {
         return (
           <div className="enter">
             <div className="card card--tall">
-              <div className="card-corner-br" />
-              <div className="card-tag">📡 PAYMENTS GATEWAY</div>
+              <div className="card-tag">Payments Gateway</div>
               <div className="card-body">
                 <form onSubmit={handleSend}>
                   <div className="input-group">
@@ -330,7 +329,7 @@ function App() {
                     <input className="input" type="number" placeholder="0.00" value={amt} onChange={e => setAmt(e.target.value)} required />
                   </div>
                   <button className="btn btn--full" type="submit" disabled={loading || !address}>
-                    {loading ? <span className="spinner" /> : 'EXECUTE UPLINK'}
+                    {loading ? <span className="spinner" /> : 'Execute Transfer'}
                   </button>
                 </form>
                 {txHash && (
@@ -348,8 +347,7 @@ function App() {
           return (
             <div className="enter">
               <div className="card card--tall">
-                <div className="card-corner-br" />
-                <div className="card-tag">📡 BATCH UPLINK — MULTI-PAY</div>
+                <div className="card-tag">Batch Payments</div>
                 <div className="card-body">
                   <p className="field-label" style={{ marginBottom: '1rem' }}>Configure recipients then execute — each payment broadcasts independently with live status.</p>
 
@@ -440,8 +438,7 @@ function App() {
           return (
             <div className="enter">
               <div className="card">
-                <div className="card-corner-br" />
-                <div className="card-tag">➗ Split Bill Calculator</div>
+                <div className="card-tag">Split Bill Calculator</div>
                 <div className="card-body">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div className="input-group">
@@ -482,8 +479,7 @@ function App() {
           return (
             <div className="enter">
               <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-                <div className="card-corner-br" />
-                <div className="card-tag">⛲ Resource Faucet</div>
+                <div className="card-tag">Resource Faucet</div>
                 <div className="card-body">
                   <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⛲</div>
                   <h2 className="site-title" style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Testnet Friendbot</h2>
@@ -501,8 +497,7 @@ function App() {
           return (
             <div className="enter">
               <div className="card">
-                <div className="card-corner-br" />
-                <div className="card-tag">▣ Protocol Activity Feed</div>
+                <div className="card-tag">Protocol Activity Feed</div>
                 <div className="card-body">
                   <p className="field-label" style={{ marginBottom: '1.5rem' }}>LIVE SMART CONTRACT NOTIFICATIONS</p>
                   {donors.length === 0 ? (
@@ -551,8 +546,7 @@ function App() {
         return (
           <div className="enter">
             <div className="card">
-              <div className="card-corner-br" />
-              <div className="card-tag">▣ Recent Ledger Activity</div>
+              <div className="card-tag">Recent Ledger Activity</div>
               <div className="card-body">
                 {history.length === 0 ? (
                   <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>AWAITING DATA SYNC...</p>
@@ -583,8 +577,7 @@ function App() {
         return (
           <div className="enter">
             <div className="card">
-              <div className="card-corner-br" />
-              <div className="card-tag">▣ Soroban Relief Protocol</div>
+              <div className="card-tag">Soroban Relief Protocol</div>
               <div className="card-body">
                 <p className="field-label">CONTRACT-MANAGED DISTRIBUTION</p>
                 <div className="progress-meter">
@@ -794,7 +787,7 @@ function App() {
             <div className="header-brand">
               <div className="header-brand-row">
                 <img src={logoImg} alt="Stellar Management Hub Logo" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '6px' }} />
-                <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.7, fontWeight: 500, letterSpacing: '2px' }}>MANAGEMENT INTERFACE V2.1</h1></div>
+                <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.9, fontWeight: 500, letterSpacing: '2px', color: 'var(--primary)' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
             <div className="header-badges">
@@ -817,54 +810,65 @@ function App() {
         </header>
 
         <main className="survivor-hub">
-          <nav className="nav-sidebar">
-            {address && (
-              <div className="balance-pill balance-pill--large" style={{ marginBottom: '1rem', width: '100%', justifyContent: 'center' }}>
-                <span>{parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</span>
-              </div>
-            )}
-            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>PAYMENTS</div>
-            <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>MULTI-PAY</div>
-            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>SPLIT BILL</div>
-            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>HISTORY</div>
-            
-            <div className="sep" style={{ margin: '0.4rem 0' }} />
-            
-            <div className={`nav-item nav-item--green ${activeTab === 'rank' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('rank')}>LEADERBOARD</div>
-            <div className={`nav-item nav-item--green ${activeTab === 'fund' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('fund')}>DONATE</div>
-            <div className={`nav-item nav-item--green ${activeTab === 'faucet' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('faucet')}>FAUCET</div>
-
-            <div className="mt-auto">
-              <button className="btn btn--danger" style={{ width: '100%', fontSize: '0.55rem', padding: '0.4rem' }} onClick={() => setLogs([])}>Clear Logs</button>
-              {!address ? (
-                <button className="btn btn--full btn--pulse" onClick={handleConnect} style={{ marginTop: '1rem' }}>LINK OPERATOR</button>
-              ) : (
-                <button className="btn btn--danger btn--full" onClick={handleDisconnect} style={{ marginTop: '1rem' }}>SEVER UPLINK</button>
-              )}
-            </div>
+          <nav className="nav-top-bar">
+            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Payments</div>
+            <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>Batch Transfer</div>
+            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
+            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
+            <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
           </nav>
 
-          <section className="view-container">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', height: '100%' }}>
-              <div className="flex-col" style={{ gap: '1.5rem' }}>
-                {renderContent()}
-              </div>
-              <div className="card card--diag">
-                <div className="card-corner-br" />
-                <div className="card-tag">Diagnostics</div>
-                <div className="card-body">
-                  <div className="console">
-                    {logs.map((l, i) => (
-                      <div key={i} className={`console-line console-line--${l.type}`}>
-                        <span className="console-ts">[{l.ts}]</span>{l.msg}
-                      </div>
-                    ))}
-                    <div ref={logEnd} />
+          <div className="bento-grid">
+            {/* ── LEFT COLUMN: Telemetry & Actions ── */}
+            <div className="flex-col" style={{ gap: '1rem' }}>
+              {address && (
+                <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Network Balance</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                    {parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>XLM</span>
                   </div>
                 </div>
+              )}
+
+              <div className="card" style={{ padding: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Session Control</div>
+                {!address ? (
+                  <button className="btn btn--full" onClick={handleConnect}>Link Operator Wallet</button>
+                ) : (
+                  <button className="btn btn--danger btn--full" onClick={handleDisconnect}>Sever Uplink</button>
+                )}
+              </div>
+
+              <div className="card" style={{ padding: '1rem' }}>
+                 <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Quick Protocols</div>
+                 <div className="flex-col" style={{ gap: '0.5rem' }}>
+                   <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('faucet')}>Testnet Faucet</button>
+                   <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('fund')}>Soroban Relief Fund</button>
+                 </div>
               </div>
             </div>
-          </section>
+
+            {/* ── CENTER COLUMN: Primary Interface ── */}
+            <div className="flex-col" style={{ gap: '1.5rem' }}>
+              {renderContent()}
+            </div>
+
+            {/* ── RIGHT COLUMN: Diagnostics ── */}
+            <div className="card card--diag">
+              <div className="card-tag">Terminal Diagnostics</div>
+              <div className="card-body">
+                <div className="console">
+                  {logs.map((l, i) => (
+                    <div key={i} className={`console-line console-line--${l.type}`}>
+                      <span className="console-ts">[{l.ts}]</span>{l.msg}
+                    </div>
+                  ))}
+                  <div ref={logEnd} />
+                </div>
+              </div>
+              <button className="btn btn--danger" style={{ marginTop: '1rem', fontSize: '0.65rem' }} onClick={() => setLogs([])}>Clear Console</button>
+            </div>
+          </div>
         </main>
 
         <footer className="site-footer">
