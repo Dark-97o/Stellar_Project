@@ -19,7 +19,7 @@ fn test_protocol_lifecycle() {
 
     // Register a mock token (XLM)
     let token_admin = Address::generate(&env);
-    let token_id = env.register_stellar_asset_contract(token_admin.clone());
+    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
     let token_client = token::Client::new(&env, &token_id);
     let token_admin_client = StellarAssetClient::new(&env, &token_id);
 
@@ -94,7 +94,7 @@ fn test_unauthorized_withdraw() {
     let contract_id = env.register(TranscendenceContract, ());
     let client = TranscendenceContractClient::new(&env, &contract_id);
 
-    let token_id = env.register_stellar_asset_contract(token_admin.clone());
+    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
 
     // Init does not require auth, so this succeeds
     client.init(&admin, &token_id, &1000);
@@ -115,7 +115,7 @@ fn test_set_admin() {
     let contract_id = env.register(TranscendenceContract, ());
     let client = TranscendenceContractClient::new(&env, &contract_id);
 
-    let token_id = env.register_stellar_asset_contract(token_admin.clone());
+    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone()).address();
 
     client.init(&admin, &token_id, &1000);
     assert_eq!(client.get_stats().admin, admin);

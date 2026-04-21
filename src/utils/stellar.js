@@ -272,7 +272,21 @@ export const fetchReliefFundStats = async () => {
     } catch { total = 0; }
   }
 
-  return { total, goal, donors };
+  let adminAddr = null;
+  try {
+    const contract = new StellarSdk.Contract(CONTRACT_ID);
+    const dummyAccount = new StellarSdk.Account(DUMMY_PK, "0");
+    const tx = new StellarSdk.TransactionBuilder(dummyAccount, { fee: "100", networkPassphrase: NETWORK_PASSPHRASE })
+      .addOperation(contract.call("get_stats"))
+      .setTimeout(30).build();
+    const sim = await rpcServer.simulateTransaction(tx);
+    if (sim.result?.retval) {
+      const stats = StellarSdk.scValToNative(sim.result.retval);
+      adminAddr = stats.admin;
+    }
+  } catch (e) { /* ignore */ }
+
+  return { total, goal, donors, admin: adminAddr };
 };
 
 
@@ -280,86 +294,102 @@ export const fetchReliefFundStats = async () => {
  * SOROBAN: Write Data to Contract (Level 2)
  * Demonstrates calling a contract function from the frontend
  */
-export const invokeContractDonate = async (publicKey, amount, onLog, walletType) => {
-  try {
-    onLog("CRAFTING SOROBAN UPLINK...", "info");
-    const sourceAccount = await horizonServer.loadAccount(publicKey);
-    
-    // 1. Build Interaction Operation
-    const contract = new StellarSdk.Contract(CONTRACT_ID);
-    const operation = contract.call(
-      "donate", 
-      StellarSdk.nativeToScVal(publicKey, { type: "address" }),
-      StellarSdk.nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: "i128" })
-    );
-    
-    // 2. Build Base Transaction
-    let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
-      fee: "100", // Placeholder fee, will be adjusted by prepareTransaction
-      networkPassphrase: NETWORK_PASSPHRASE,
-    })
-      .addOperation(operation)
-      .setTimeout(30)
-      .build();
+const executeSorobanOperation = async (publicKey, operation, onLog, walletType) => {
+  const sourceAccount = await horizonServer.loadAccount(publicKey);
+  let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+    fee: "100",
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
 
-    // 3. Mandatory Preparation: Simulation & Resource Adjustment
-    onLog("SIMULATING UPLINK RESOURCES...", "info");
-    tx = await rpcServer.prepareTransaction(tx);
-    
-    // 4. Awaiting Signature
-    onLog("UPLINK PENDING: AWAITING SIGNATURE...", "warn");
-    
-    const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
-      networkPassphrase: NETWORK_PASSPHRASE,
-      address: publicKey,
-      walletType
-    });
-    
-    onLog("SIGNATURE ACQUIRED. BROADCASTING TO SOROBAN RPC...", "ok");
-    
-    // DIRECT RPC UPLINK: Bypasses SDK serialization to avoid 'e.switch' error
-    if (typeof signedTxXdr !== 'string') {
-      throw new Error(`INVALID_SIGNATURE: Received ${typeof signedTxXdr} instead of string.`);
-    }
-
-    try {
-      const rpcUrl = 'https://soroban-testnet.stellar.org'; // Removed trailing slash
-      const rpcResponse = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: Date.now(),
-          method: 'sendTransaction',
-          params: { transaction: signedTxXdr }
-        })
-      });
-
-      if (!rpcResponse.ok) {
-        throw new Error(`UPLINK_HTTP_ERR: ${rpcResponse.status} ${rpcResponse.statusText}`);
-      }
-
-      const rpcResult = await rpcResponse.json();
-      
-      if (rpcResult.error) {
-        throw new Error(`RPC_ERR ${rpcResult.error.code}: ${rpcResult.error.message}`);
-      }
-
-      const data = rpcResult.result;
-      if (data.status === 'ERROR') {
-        throw new Error(`UPLINK_REJECTED: ${data.errorResultXdr || 'Transaction Logic Failed'}`);
-      }
-
-      return { hash: data.hash };
-    } catch (rpcErr) {
-      throw new Error(`UPLINK_FETCH_FAILURE: ${rpcErr.message}`);
-    }
-  } catch (error) {
-    throw error;
+  onLog("SIMULATING UPLINK RESOURCES...", "info");
+  tx = await rpcServer.prepareTransaction(tx);
+  
+  onLog("UPLINK PENDING: AWAITING SIGNATURE...", "warn");
+  const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
+    networkPassphrase: NETWORK_PASSPHRASE,
+    address: publicKey,
+    walletType
+  });
+  
+  onLog("SIGNATURE ACQUIRED. BROADCASTING TO SOROBAN RPC...", "ok");
+  if (typeof signedTxXdr !== 'string') {
+    throw new Error(`INVALID_SIGNATURE: Received ${typeof signedTxXdr} instead of string.`);
   }
+
+  const rpcUrl = 'https://soroban-testnet.stellar.org';
+  const rpcResponse = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: Date.now(), method: 'sendTransaction',
+      params: { transaction: signedTxXdr }
+    })
+  });
+
+  if (!rpcResponse.ok) throw new Error(`UPLINK_HTTP_ERR: ${rpcResponse.status} ${rpcResponse.statusText}`);
+  const rpcResult = await rpcResponse.json();
+  if (rpcResult.error) throw new Error(`RPC_ERR ${rpcResult.error.code}: ${rpcResult.error.message}`);
+  
+  const data = rpcResult.result;
+  if (data.status === 'ERROR') throw new Error(`UPLINK_REJECTED: ${data.errorResultXdr || 'Transaction Logic Failed'}`);
+  return { hash: data.hash };
+};
+
+export const invokeContractDonate = async (publicKey, amount, onLog, walletType) => {
+  onLog("CRAFTING SOROBAN UPLINK...", "info");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const op = contract.call(
+    "donate", 
+    StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+    StellarSdk.nativeToScVal(BigInt(Math.floor(amount * 10000000)), { type: "i128" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+export const invokeContractWithdraw = async (publicKey, destination, onLog, walletType) => {
+  onLog("CRAFTING WITHDRAW UPLINK...", "info");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const op = contract.call(
+    "withdraw", 
+    StellarSdk.nativeToScVal(destination, { type: "address" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+export const invokeContractSetAdmin = async (publicKey, newAdmin, onLog, walletType) => {
+  onLog("CRAFTING ADMIN HANDOFF UPLINK...", "info");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const op = contract.call(
+    "set_admin", 
+    StellarSdk.nativeToScVal(newAdmin, { type: "address" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+export const invokeContractSetActive = async (publicKey, isActive, onLog, walletType) => {
+  onLog(`CRAFTING PROTOCOL PAUSE (${isActive}) UPLINK...`, "info");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const op = contract.call(
+    "set_active", 
+    StellarSdk.nativeToScVal(isActive, { type: "bool" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+export const invokeContractInit = async (publicKey, onLog, walletType) => {
+  onLog("CRAFTING DOUBLE-INIT HIJACK UPLINK...", "warn");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  const SAC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+  const op = contract.call(
+    "init", 
+    StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+    StellarSdk.nativeToScVal(SAC, { type: "address" }),
+    StellarSdk.nativeToScVal(10000n, { type: "i128" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
 };
 
 /**

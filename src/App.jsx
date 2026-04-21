@@ -9,6 +9,10 @@ import {
   fetchNetworkWhales, 
   RELIEF_ADDR,
   invokeContractDonate,
+  invokeContractWithdraw,
+  invokeContractSetAdmin,
+  invokeContractSetActive,
+  invokeContractInit,
   fundFromFaucet,
   sendMultiPayment,
   ErrorTypes
@@ -99,6 +103,7 @@ function App() {
   const [faucetLoading, setFaucetLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [adminAddress, setAdminAddress] = useState(null);
   const [splitMode, setSplitMode] = useState('single'); // 'single' or 'multi'
   const [calcTotal, setCalcTotal] = useState('');
   const [calcN, setCalcN] = useState(2);
@@ -151,6 +156,7 @@ function App() {
       setFundTotal(relief.total);
       setFundGoal(relief.goal || 10000);
       setDonors(relief.donors);
+      if (relief.admin) setAdminAddress(relief.admin);
     } catch (e) {
       console.warn("Sync Error:", e);
     } finally {
@@ -263,6 +269,49 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /* ── ADMIN DIAGNOSTICS HANDLERS ───────────────────────────────── */
+  const handleAdminWithdraw = async (e) => {
+    e.preventDefault();
+    const dest = prompt("ENTER AUTHORIZED RECIPIENT ADDRESS (G...):");
+    if (!dest) return;
+    setLoading(true);
+    try {
+      await invokeContractWithdraw(address, dest, (m, t) => log(m, t), walletType);
+      await syncAllData();
+    } catch (err) { log(`WITHDRAW REJECTED: ${err.message}`, "err"); }
+    setLoading(false);
+  };
+
+  const handleAdminTransfer = async (e) => {
+    e.preventDefault();
+    const newAdmin = prompt("ENTER NEW PROTOCOL ADMIN (G...):");
+    if (!newAdmin) return;
+    setLoading(true);
+    try {
+      await invokeContractSetAdmin(address, newAdmin, (m, t) => log(m, t), walletType);
+      await syncAllData();
+    } catch (err) { log(`ADMIN HANDOFF ERROR: ${err.message}`, "err"); }
+    setLoading(false);
+  };
+
+  const handleAdminTogglePause = async (isActive) => {
+    setLoading(true);
+    try {
+      await invokeContractSetActive(address, isActive, (m, t) => log(m, t), walletType);
+      await syncAllData();
+    } catch (err) { log(`PAUSE TOGGLE ERROR: ${err.message}`, "err"); }
+    setLoading(false);
+  };
+
+  const handleMaliciousInit = async () => {
+    setLoading(true);
+    try {
+      await invokeContractInit(address, (m, t) => log(m, t), walletType);
+      await syncAllData();
+    } catch (err) { log(`MALICIOUS INIT REJECTED: ${err.message}`, "ok"); }
+    setLoading(false);
   };
 
   const handleMultiPay = async () => {
@@ -699,6 +748,65 @@ function App() {
             </div>
           </div>
         );
+      case 'diagnostics':
+        return (
+          <div className="enter">
+            <div className="card" style={{ border: '1px solid var(--red)' }}>
+              <div className="card-tag" style={{ color: 'var(--red)', borderLeftColor: 'var(--red)' }}>⚠ Admin Security Tests</div>
+              <div className="card-body">
+                <p className="field-label" style={{ marginBottom: '1.5rem', color: 'var(--text-main)', opacity: 0.8 }}>
+                  These strict actions execute live invocations simulating Soroban Testnet security features. 
+                </p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>1. Authorized Withdraw</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proves the admin can safely access the communal protocol pool.</p>
+                      </div>
+                      <button className="btn" onClick={handleAdminWithdraw} disabled={loading}>WITHDRAW FUNDS</button>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>2. Transfer Ownership</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proves the protocol is secure from deadlocks via decentralized handoffs.</p>
+                      </div>
+                      <button className="btn" onClick={handleAdminTransfer} disabled={loading}>SET ADMIN</button>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>3. Protocol Pause Toggle</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proves external inputs can be halted securely and resumed seamlessly.</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn--danger" onClick={() => handleAdminTogglePause(false)} disabled={loading}>PAUSE</button>
+                        <button className="btn btn--ghost" onClick={() => handleAdminTogglePause(true)} disabled={loading}>RESUME</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(255,80,80,0.05)', borderRadius: '8px', border: '1px solid rgba(255,80,80,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ color: 'var(--red)' }}>4. Malicious Initialization</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Proves hijacked initialization endpoints are blocked permanently.</p>
+                      </div>
+                      <button className="btn btn--danger" onClick={handleMaliciousInit} disabled={loading}>TRIGGER HIJACK</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
       default: return null;
     }
   };
@@ -832,6 +940,9 @@ function App() {
             <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
             <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
             <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
+            {address && adminAddress && address === adminAddress && (
+              <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>⚠ DIAGNOSTICS</div>
+            )}
           </nav>
 
           <div className="bento-grid">

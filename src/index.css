@@ -5,9 +5,9 @@
   --bg-abyss:     #05080c;
   --bg-deep:      #0a0f18;
   --bg-base:      #0e1420;
-  --bg-card:      rgba(255, 255, 255, 0.03);
-  --bg-card-hover:rgba(255, 255, 255, 0.05);
-  --bg-input:     rgba(0, 0, 0, 0.2);
+  --bg-card:      rgba(10, 15, 24, 0.75);
+  --bg-card-hover:rgba(10, 15, 24, 0.85);
+  --bg-input:     rgba(0, 0, 0, 0.35);
 
   --primary:      #00e5ff; /* Vibrant Cyan */
   --primary-bright:#4dffff;
@@ -936,6 +936,18 @@ body::before {
   background: var(--primary);
   border: 1px solid var(--primary);
   box-shadow: 0 0 15px var(--primary-dim);
+}
+
+.nav-item--diag {
+  color: var(--red);
+  border-color: transparent;
+}
+
+.nav-item--diag.nav-item--active {
+  color: var(--bg-abyss);
+  background: var(--red);
+  border: 1px solid var(--red);
+  box-shadow: 0 0 15px rgba(255, 80, 80, 0.4);
 }
 
 /* ── NOTIFICATION SYSTEM ────────────────────────────────────── */
