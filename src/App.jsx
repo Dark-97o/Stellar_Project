@@ -15,6 +15,7 @@ import {
 } from './utils/stellar';
 import { ALLOWED_WALLETS } from './utils/kit';
 import Spline from '@splinetool/react-spline';
+import logoImg from '/logo.png';
 import './index.css';
 
 /* ══════════════════════════════════════════════════════════════
@@ -98,6 +99,7 @@ function App() {
   const [calcTotal, setCalcTotal] = useState('');
   const [calcN, setCalcN] = useState(2);
   const [multiRecipients, setMultiRecipients] = useState([{ dest: '', amt: '' }]);
+  const [multiStatuses, setMultiStatuses] = useState([]); // per-recipient {state, hash}
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -256,6 +258,46 @@ function App() {
     }
   };
 
+  const handleMultiPay = async () => {
+    if (!address) { log('UPLINK REQUIRED FOR MULTI-PAY.', 'err'); return; }
+    const valid = multiRecipients.filter(r => r.dest.trim() && parseFloat(r.amt) > 0);
+    if (!valid.length) { log('NO VALID RECIPIENTS CONFIGURED.', 'err'); return; }
+    setLoading(true);
+    // Init all statuses as PENDING
+    const initStatuses = valid.map(() => ({ state: 'pending', hash: null }));
+    setMultiStatuses(initStatuses);
+    log(`INITIATING BATCH UPLINK → ${valid.length} TARGETS...`, 'info');
+
+    // Fire all payments in parallel, capturing individual results
+    const results = await Promise.allSettled(
+      valid.map((r, i) =>
+        sendPayment(address, r.dest, r.amt, (m, t) => log(`[${i+1}/${valid.length}] ${m}`, t), walletType)
+          .then(res => {
+            setMultiStatuses(prev => {
+              const next = [...prev];
+              next[i] = { state: 'ok', hash: res.hash };
+              return next;
+            });
+            return res;
+          })
+          .catch(err => {
+            setMultiStatuses(prev => {
+              const next = [...prev];
+              next[i] = { state: 'err', hash: null, msg: err.message };
+              return next;
+            });
+            throw err;
+          })
+      )
+    );
+
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - succeeded;
+    log(`BATCH COMPLETE: ${succeeded} OK / ${failed} FAILED.`, failed ? 'err' : 'ok');
+    await syncAllData();
+    setLoading(false);
+  };
+
   const applySplit = () => {
     const total = parseFloat(calcTotal);
     const n = parseInt(calcN);
@@ -298,6 +340,98 @@ function App() {
                 )}
               </div>
             </div>
+            </div>
+          );
+        case 'multipay':
+          return (
+            <div className="enter">
+              <div className="card card--tall">
+                <div className="card-corner-br" />
+                <div className="card-tag">📡 BATCH UPLINK — MULTI-PAY</div>
+                <div className="card-body">
+                  <p className="field-label" style={{ marginBottom: '1rem' }}>Configure recipients then execute — each payment broadcasts independently with live status.</p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.2rem', maxHeight: '340px', overflowY: 'auto' }}>
+                    {multiRecipients.map((r, i) => {
+                      const status = multiStatuses[i];
+                      return (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 36px 80px', gap: '0.5rem', alignItems: 'center' }}>
+                          <input
+                            className="input"
+                            placeholder={`Recipient ${i + 1} (G...)`}
+                            value={r.dest}
+                            onChange={e => {
+                              const next = [...multiRecipients];
+                              next[i] = { ...next[i], dest: e.target.value };
+                              setMultiRecipients(next);
+                            }}
+                            style={{ fontSize: '0.7rem' }}
+                          />
+                          <input
+                            className="input"
+                            type="number"
+                            placeholder="XLM"
+                            value={r.amt}
+                            onChange={e => {
+                              const next = [...multiRecipients];
+                              next[i] = { ...next[i], amt: e.target.value };
+                              setMultiRecipients(next);
+                            }}
+                            style={{ fontSize: '0.75rem' }}
+                          />
+                          <button
+                            onClick={() => {
+                              const next = multiRecipients.filter((_, idx) => idx !== i);
+                              setMultiRecipients(next.length ? next : [{ dest: '', amt: '' }]);
+                              setMultiStatuses(prev => prev.filter((_, idx) => idx !== i));
+                            }}
+                            style={{ background: 'rgba(255,60,60,0.12)', border: '1px solid rgba(255,60,60,0.25)', color: '#ff6b6b', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', height: '100%' }}
+                          >✕</button>
+                          {/* Per-recipient live status badge */}
+                          {status ? (
+                            status.state === 'pending' ? (
+                              <span style={{ fontSize: '0.6rem', color: 'var(--yellow)', background: 'rgba(255,195,0,0.1)', border: '1px solid rgba(255,195,0,0.3)', borderRadius: '4px', padding: '0.2rem 0.4rem', textAlign: 'center' }}>⏳ PENDING</span>
+                            ) : status.state === 'ok' ? (
+                              <span
+                                title={status.hash}
+                                onClick={() => status.hash && window.open(getExplorerUrl(status.hash), '_blank')}
+                                style={{ fontSize: '0.6rem', color: '#4ade80', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '4px', padding: '0.2rem 0.4rem', textAlign: 'center', cursor: 'pointer' }}
+                              >✓ OK ↗</span>
+                            ) : (
+                              <span title={status.msg} style={{ fontSize: '0.6rem', color: '#ff6b6b', background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: '4px', padding: '0.2rem 0.4rem', textAlign: 'center' }}>✗ FAIL</span>
+                            )
+                          ) : <span />}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    <button
+                      className="btn btn--ghost"
+                      style={{ flex: 1 }}
+                      onClick={() => { setMultiRecipients(p => [...p, { dest: '', amt: '' }]); }}
+                    >+ ADD RECIPIENT</button>
+                    <button
+                      className="btn btn--ghost"
+                      style={{ flex: 1 }}
+                      onClick={() => { setMultiRecipients([{ dest: '', amt: '' }]); setMultiStatuses([]); }}
+                    >⟳ RESET</button>
+                  </div>
+
+                  <button
+                    className="btn btn--full"
+                    onClick={handleMultiPay}
+                    disabled={loading || !address}
+                  >
+                    {loading ? <span className="spinner" /> : `EXECUTE BATCH (${multiRecipients.filter(r => r.dest && r.amt).length} TARGETS)`}
+                  </button>
+
+                  {!address && (
+                    <p style={{ textAlign: 'center', color: 'var(--red)', fontSize: '0.7rem', marginTop: '1rem' }}>CONNECT WALLET TO ENABLE BATCH UPLINK</p>
+                  )}
+                </div>
+              </div>
             </div>
           );
         case 'calculator':
@@ -573,13 +707,7 @@ function App() {
           <div className="header-top">
             <div className="header-brand">
               <div className="header-brand-row">
-                <svg className="header-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="48" stroke="var(--cyan)" strokeWidth="2" fill="none" opacity="0.3"/>
-                  <path d="M74.4 32.8L25.7 55.4C24.3 56 24.3 58 25.7 58.6L33.5 62L74.4 43.2V32.8Z" fill="var(--cyan)"/>
-                  <path d="M74.4 43.2L33.5 62L36.8 63.5L74.4 46V43.2Z" fill="var(--cyan)" opacity="0.5"/>
-                  <path d="M74.4 50.6L25.7 73.2C24.3 73.8 24.3 75.8 25.7 76.4L33.5 79.8L74.4 61V50.6Z" fill="var(--cyan)"/>
-                  <path d="M74.4 61L33.5 79.8L36.8 81.3L74.4 63.8V61Z" fill="var(--cyan)" opacity="0.5"/>
-                </svg>
+                <img src={logoImg} alt="Stellar Management Hub Logo" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '6px' }} />
                 <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.7, fontWeight: 500, letterSpacing: '2px' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
@@ -606,10 +734,11 @@ function App() {
           <nav className="nav-sidebar">
             {address && (
               <div className="balance-pill balance-pill--large" style={{ marginBottom: '1rem', width: '100%', justifyContent: 'center' }}>
-                <span>{parseFloat(balance).toLocaleString()} XLM</span>
+                <span>{parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</span>
               </div>
             )}
             <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>PAYMENTS</div>
+            <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>MULTI-PAY</div>
             <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>SPLIT BILL</div>
             <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>HISTORY</div>
             
