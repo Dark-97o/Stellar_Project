@@ -247,7 +247,9 @@ export const fetchReliefFundStats = async () => {
 
     // Net current pool = donations - withdrawals
     total = Math.max(0, donatedTotal - withdrawnTotal);
-    donors = donors.slice(0, 5); // 5 most recent donors for display
+    
+    // Sort array so newest events sit at the top, then strictly limit to latest 5
+    donors = donors.reverse().slice(0, 5); 
 
   } catch {
     // FALLBACK: SAC balance query via Soroban simulation
