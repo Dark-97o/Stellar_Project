@@ -108,14 +108,25 @@ export const fundFromFaucet = async (publicKey, onLog) => {
  * FETCH REAL HISTORY: Last 5 relevant operations (Payments, Creations)
  */
 export const fetchAccountHistory = async (publicKey) => {
+  const CACHE_KEY = `history_${publicKey}`;
+  const CACHE_TTL = 30000; // 30 seconds
+
   try {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < CACHE_TTL) {
+        return parsed.data;
+      }
+    }
+
     const response = await horizonServer.operations()
       .forAccount(publicKey)
       .order("desc")
       .limit(20)
       .call();
     
-    return response.records
+    const historyData = response.records
       .filter(rec =>
         rec.type === 'payment' ||
         rec.type === 'create_account' ||
@@ -144,6 +155,9 @@ export const fetchAccountHistory = async (publicKey) => {
         };
       })
       .slice(0, 8);
+
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: historyData, timestamp: Date.now() }));
+    return historyData;
   } catch (error) {
     console.error("History Fetch Error:", error);
     return [];
@@ -373,6 +387,24 @@ const WHALE_REGISTRY = [
  * 3. Fallback: Static Cached Estimates
  */
 export const fetchNetworkWhales = async (onLog) => {
+  const CACHE_KEY = `whales_cache`;
+  const CACHE_TTL = 3600000; // 1 hour
+
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < CACHE_TTL) {
+        if (onLog) onLog("LEADERBOARD SYNCED: RESTORED FROM SECURE CACHE (Tier 0)", "ok");
+        return parsed.data;
+      }
+    }
+  } catch (e) {
+    // skip err
+  }
+
+  let finalData = [];
+
   try {
     // TIER 1: Analytical Data from StellarExpert (Live Rich List)
     const response = await fetch("https://api.stellar.expert/explorer/testnet/asset/XLM/holders?order=desc&limit=10", {
@@ -385,12 +417,14 @@ export const fetchNetworkWhales = async (onLog) => {
       
       if (records.length > 0) {
         if (onLog) onLog("LEADERBOARD SYNCED: TIER-1 ANALYTICS (Rich List Source)", "ok");
-        return records.map(r => ({
+        finalData = records.map(r => ({
           addr: r.address,
           displayAddr: `${r.address.substring(0, 8)}...${r.address.slice(-4)}`,
           amt: parseFloat(r.balance) / 10000000,
           source: 'ST_EXPERT'
         }));
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: finalData, timestamp: Date.now() }));
+        return finalData;
       }
     }
   } catch (error) {
@@ -434,8 +468,10 @@ export const fetchNetworkWhales = async (onLog) => {
     const validDiscovery = discoveryData.filter(w => w !== null).sort((a, b) => b.amt - a.amt);
     
     if (validDiscovery.length > 0) {
+      finalData = validDiscovery.slice(0, 8);
       if (onLog) onLog(`LEADERBOARD SYNCED: TIER-2 DYNAMIC DISCOVERY (${validDiscovery.length} Active Whales)`, "ok");
-      return validDiscovery.slice(0, 8);
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: finalData, timestamp: Date.now() }));
+      return finalData;
     }
   } catch (error) {
     // Proceed to Tier 3
@@ -443,12 +479,14 @@ export const fetchNetworkWhales = async (onLog) => {
 
   // TIER 3: Fail-safe Registry 
   if (onLog) onLog("LEADERBOARD SYNCED: TIER-3 FALLBACK (Registry Protocol)", "warn");
-  return WHALE_REGISTRY.slice(0, 8).map((addr, i) => ({
+  finalData = WHALE_REGISTRY.slice(0, 8).map((addr, i) => ({
     addr,
     displayAddr: `${addr.substring(0, 8)}...${addr.slice(-4)}`,
     amt: i === 0 ? 81700030400 : (10000000 / (i + 1)), 
     source: 'FAILSAFE_REG'
   }));
+  sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: finalData, timestamp: Date.now() }));
+  return finalData;
 };
 
 /**

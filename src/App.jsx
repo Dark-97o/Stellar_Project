@@ -97,6 +97,8 @@ function App() {
 
   // New Feature States
   const [faucetLoading, setFaucetLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
   const [splitMode, setSplitMode] = useState('single'); // 'single' or 'multi'
   const [calcTotal, setCalcTotal] = useState('');
   const [calcN, setCalcN] = useState(2);
@@ -137,6 +139,7 @@ function App() {
 
   const syncAllData = async (addr = address) => {
     if (!addr) return;
+    setIsSyncing(true);
     try {
       const b = await getXlmBalance(addr);
       setBalance(b === "UPLINK_NOT_INITIALIZED" ? "0.00" : b);
@@ -150,6 +153,8 @@ function App() {
       setDonors(relief.donors);
     } catch (e) {
       console.warn("Sync Error:", e);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -268,6 +273,7 @@ function App() {
     // Init all statuses as PENDING
     const initStatuses = valid.map(() => ({ state: 'pending', hash: null }));
     setMultiStatuses(initStatuses);
+    setBatchProgress(0);
     log(`INITIATING BATCH UPLINK → ${valid.length} TARGETS...`, 'info');
 
     // Fire all payments in parallel, capturing individual results
@@ -280,6 +286,7 @@ function App() {
               next[i] = { state: 'ok', hash: res.hash };
               return next;
             });
+            setBatchProgress(prev => prev + (100 / valid.length));
             return res;
           })
           .catch(err => {
@@ -288,6 +295,7 @@ function App() {
               next[i] = { state: 'err', hash: null, msg: err.message };
               return next;
             });
+            setBatchProgress(prev => prev + (100 / valid.length));
             throw err;
           })
       )
@@ -427,6 +435,12 @@ function App() {
                     {loading ? <span className="spinner" /> : `EXECUTE BATCH (${multiRecipients.filter(r => r.dest && r.amt).length} TARGETS)`}
                   </button>
 
+                  {loading && batchProgress > 0 && (
+                    <div className="progress-bar-container">
+                      <div className="progress-fill" style={{ width: `${batchProgress}%` }} />
+                    </div>
+                  )}
+
                   {!address && (
                     <p style={{ textAlign: 'center', color: 'var(--red)', fontSize: '0.7rem', marginTop: '1rem' }}>CONNECT WALLET TO ENABLE BATCH UPLINK</p>
                   )}
@@ -548,16 +562,18 @@ function App() {
             <div className="card">
               <div className="card-tag">Recent Ledger Activity</div>
               <div className="card-body">
-                {history.length === 0 ? (
+                {isSyncing && history.length === 0 ? (
+                  <div className="skeleton-pulse" style={{ height: '200px', width: '100%', borderRadius: '6px' }} />
+                ) : history.length === 0 ? (
                   <p className="field-value--empty" style={{ textAlign: 'center', padding: '2rem' }}>AWAITING DATA SYNC...</p>
                 ) : (
-                  <table className="tracker-table">
+                  <table className={`tracker-table ${isSyncing ? 'skeleton-pulse' : ''}`}>
                     <thead>
                       <tr><th>Identifier</th><th>Volume</th><th>Protocol</th></tr>
                     </thead>
                     <tbody>
                       {history.map(item => (
-                        <tr key={item.id}>
+                        <tr key={item.id} style={{ opacity: isSyncing ? 0.3 : 1, transition: 'opacity 0.3s' }}>
                           <td>{item.addr}</td>
                           <td style={{ color: 'var(--yellow)' }}>{item.amt}</td>
                           <td>
@@ -824,9 +840,13 @@ function App() {
               {address && (
                 <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Network Balance</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
-                    {parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>XLM</span>
-                  </div>
+                  {isSyncing ? (
+                    <div className="skeleton-pulse" style={{ height: '35px', width: '120px', margin: '0 auto', borderRadius: '4px' }} />
+                  ) : (
+                    <div style={{ fontSize: '1.8rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                      {parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>XLM</span>
+                    </div>
+                  )}
                 </div>
               )}
 

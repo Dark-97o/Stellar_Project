@@ -81,3 +81,45 @@ fn test_prevent_double_init() {
     client.init(&admin, &token, &1000);
     client.init(&admin, &token, &1000);
 }
+
+#[test]
+#[should_panic]
+fn test_unauthorized_withdraw() {
+    let env = Env::default();
+    
+    let admin = Address::generate(&env);
+    let rogue = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    
+    let contract_id = env.register(TranscendenceContract, ());
+    let client = TranscendenceContractClient::new(&env, &contract_id);
+
+    let token_id = env.register_stellar_asset_contract(token_admin.clone());
+
+    // Init does not require auth, so this succeeds
+    client.init(&admin, &token_id, &1000);
+
+    // Withdraw requires admin auth. Since we haven't mocked auth, this should panic!
+    client.withdraw(&rogue);
+}
+
+#[test]
+fn test_set_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    
+    let contract_id = env.register(TranscendenceContract, ());
+    let client = TranscendenceContractClient::new(&env, &contract_id);
+
+    let token_id = env.register_stellar_asset_contract(token_admin.clone());
+
+    client.init(&admin, &token_id, &1000);
+    assert_eq!(client.get_stats().admin, admin);
+
+    client.set_admin(&new_admin);
+    assert_eq!(client.get_stats().admin, new_admin);
+}

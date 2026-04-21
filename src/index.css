@@ -838,6 +838,37 @@ body::before {
 .text-center { text-align: center; }
 .gap-sm { gap: 0.5rem; }
 
+/* ── LEVEL 3: SKELETON UI & PROGRESS ── */
+.skeleton-pulse {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(0, 229, 255, 0.1) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: skeletonLoad 1.5s infinite linear;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+@keyframes skeletonLoad {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-deep);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary-dim);
+  transition: width 0.3s ease;
+}
+
 /* ── LAYOUT: BENTO COMMAND CENTER ─────────────────── */
 .survivor-hub {
   display: flex;
