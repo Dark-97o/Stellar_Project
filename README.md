@@ -13,15 +13,18 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 - **🔗 Freighter Wallet Integration** — Connect/disconnect your Stellar wallet via the Freighter browser extension
 - **💰 Real-Time Balance** — Fetch and display your Testnet XLM balance from Horizon
 - **📤 Send Payments** — Transfer XLM to any Stellar address on the Testnet
+- **🚀 Advanced Batch Processing (MULTI-PAY)** — Execute parallel, multi-recipient payment scripts in a single operation with per-target status tracking
+- **🧪 Frontend Live Diagnostics Panes** — An interactive, admin-only testing suite that interacts directly with Soroban Testnet to visually prove smart contract security measures (Malicious init blocking, Auth blocking, Protocol Pause toggling, Admin transfers).
+- **⚡ Smart Caching Performance** — `sessionStorage` TTL caching architecture drastically reducing Horizon RPC rate-limits and allowing instant load times for Heavy queries like Account History and Whale Leaderboards.
+- **⏳ Skeleton Loading States & UX** — Immersive glass-morphic `skeleton-pulse` loaders and dynamic UI synchronization indicators for zero layout shift during API fetches.
 - **📋 Transaction Logs** — Live diagnostic console showing all operations and errors
 - **🔍 Explorer Links** — View completed transactions on Stellar Expert
-- **🎨 Dystopian UI** — Immersive dark terminal aesthetic with CRT scanlines, glassmorphism cards, and animated effects
+- **🎨 Dystopian UI** — Immersive dark terminal aesthetic with CRT scanlines, glassmorphism cards, interactive 3D elements, and animated effects
 - **📱 Zero-Scroll Architecture** — High-density design optimized for professional monitoring without vertical scrolling
 - **💎 Dynamic Discovery Engine** — Tiered leaderboard protocol that "hunts" for new network whales via live ledger scanning
 - **🏦 Multi-Wallet Gateway** — Unified uplink supporting Freighter, Rabe, Hana, xBull, and Albedo
 - **⚡ Soroban Relief Protocol** — Direct smart contract interaction for decentralized relief funding
 - **🔔 Tactical Notifications** — Real-time red-dot alert system for critical system events
-- **📱 Responsive** — Adapts from desktop two-column layout to single-column on mobile
 - **🛡️ Error Boundary** — Graceful crash recovery with themed error screen
 
 ---
@@ -46,11 +49,16 @@ The Hub employs a three-tier strategy to ensure the Network Leaderboard is never
 - **Tier 2 (Discovery)**: A live "Discovery Engine" that scans the latest 50-100 ledger operations to identify active high-volume accounts and audits their balances directly via Horizon.
 - **Tier 3 (Fail-safe)**: A hardcoded registry of verified high-balance accounts used as a mission-critical last resort.
 
-#### 2. Soroban Smart Contract Integration
+#### 2. Soroban Smart Contract Integration & Security Testing
 The **DONATE** module interfaces directly with a WASM-based smart contract on the Soroban testnet. It handles:
 - Real-time simulation of contract state (Goal vs. Secured).
 - Transaction preparation, footprint analysis, and multi-wallet signing.
 - Event tracking to identify recent network contributors.
+- **Live UI Testing:** The app features a hidden `⚠ DIAGNOSTICS` panel strictly visible only to the contract's Admin address. It allows real-time execution of the internal Rust security tests directly via Freighter signatures:
+   - Prove Malicious `init` Hijacks are blocked.
+   - Prove Protocol Pauses (`set_active`) dynamically halt all pool contributions globally.
+   - Prove Unauthorized `withdraw` functions trap the Wasm VM and reject theft.
+   - Prove the Contract can be decentralized mapped to a new Admin safely.
 
 ---
 
@@ -124,6 +132,14 @@ The app will be available at **http://localhost:5173**
 ### Multi-Wallet Gateway
 
 <img width="568" height="638" alt="image" src="https://github.com/user-attachments/assets/b5ab111c-1f87-4d72-a376-876a15900c36" />
+
+### Test Cases Passed
+
+[ INSERT TEST CASES PASSED SCREENSHOT HERE ]
+
+### Demo Video
+
+[ INSERT DEMO VIDEO HERE ]
 
 ### Deployment Environment
 
