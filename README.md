@@ -139,7 +139,7 @@ The app will be available at **http://localhost:5173**
 
 ### Demo Video
 
-
+https://github.com/user-attachments/assets/0df2d724-17d5-4614-9918-5c0a46ce9572
 
 ### Deployment Environment
 
