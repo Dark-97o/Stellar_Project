@@ -1192,7 +1192,16 @@ function App() {
                 {address ? (
                   <span style={{ color: 'var(--success)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>CONNECTED: {formatAddress(address, 6, 4)}</span>
                 ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>SYSTEM OFFLINE</span>
+                  <button 
+                    onClick={() => setShowWalletModal(true)}
+                    style={{ 
+                      background: 'none', border: 'none', color: 'var(--primary)', 
+                      fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', 
+                      cursor: 'pointer', textTransform: 'uppercase', padding: 0 
+                    }}
+                  >
+                    Connect Wallet
+                  </button>
                 )}
               </div>
               <span className="badge badge--net" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }}>Testnet</span>
