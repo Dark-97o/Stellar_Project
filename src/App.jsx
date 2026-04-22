@@ -542,8 +542,8 @@ function App() {
                     playsInline 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
                   >
-                    <source src="/img/pay.mov" type="video/quicktime" />
-                    <source src="/img/pay.mp4" type="video/mp4" />
+                    <source src="/img/vidbg.mov" type="video/quicktime" />
+                    <source src="/img/poverty.mp4" type="video/mp4" />
                   </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -589,8 +589,8 @@ function App() {
                     playsInline 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
                   >
-                    <source src="/img/pay.mov" type="video/quicktime" />
-                    <source src="/img/pay.mp4" type="video/mp4" />
+                    <source src="/img/vidbg.mov" type="video/quicktime" />
+                    <source src="/img/poverty.mp4" type="video/mp4" />
                   </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -703,8 +703,8 @@ function App() {
                     playsInline 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
                   >
-                    <source src="/img/pay.mov" type="video/quicktime" />
-                    <source src="/img/pay.mp4" type="video/mp4" />
+                    <source src="/img/vidbg.mov" type="video/quicktime" />
+                    <source src="/img/poverty.mp4" type="video/mp4" />
                   </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -1262,35 +1262,34 @@ function App() {
                 <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
                 <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
               </button>
+
+              {/* Compact Mobile Menu - Moved here for better anchoring */}
+              <nav className={`nav-top-bar ${isMenuOpen ? 'nav-top-bar--open' : ''}`}>
+                <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('terminal'); setIsMenuOpen(false); }}>Payments</div>
+                <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('multipay'); setIsMenuOpen(false); }}>Batch Transfer</div>
+                <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('calculator'); setIsMenuOpen(false); }}>Split Bill</div>
+                <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('tracker'); setIsMenuOpen(false); }}>History</div>
+                <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('events'); setHasAlerts(false); setIsMenuOpen(false); }}>System Events</div>
+                {address && adminAddress && address === adminAddress && (
+                  <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('diagnostics'); setIsMenuOpen(false); }}>Diagnostics</div>
+                )}
+                <div 
+                  className={`nav-item shop-nav-btn ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
+                  onClick={() => { setActiveTab('shop'); setIsMenuOpen(false); }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                  SHOP
+                </div>
+              </nav>
             </div>
           </div>
         </header>
 
         <main className="survivor-hub">
-          <div className="nav-container">
-            <nav className={`nav-top-bar ${isMenuOpen ? 'nav-top-bar--open' : ''}`}>
-              <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('terminal'); setIsMenuOpen(false); }}>Payments</div>
-              <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('multipay'); setIsMenuOpen(false); }}>Batch Transfer</div>
-              <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('calculator'); setIsMenuOpen(false); }}>Split Bill</div>
-              <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('tracker'); setIsMenuOpen(false); }}>History</div>
-              <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('events'); setIsMenuOpen(false); }}>System Events</div>
-              {address && adminAddress && address === adminAddress && (
-                <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('diagnostics'); setIsMenuOpen(false); }}>Diagnostics</div>
-              )}
-              <div 
-                className={`nav-item shop-nav-btn ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
-                onClick={() => { setActiveTab('shop'); setIsMenuOpen(false); }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
-                  <circle cx="9" cy="21" r="1"></circle>
-                  <circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                </svg>
-                SHOP
-              </div>
-            </nav>
-          </div>
-
           <div className="bento-grid">
             {/* ── LEFT COLUMN: Telemetry & Actions ── */}
             <div className="flex-col" style={{ gap: '1rem' }}>
