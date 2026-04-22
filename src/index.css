@@ -1735,6 +1735,13 @@ body::before {
     margin-top: 0.5rem;
   }
 
+  .hero-subtitle {
+    font-size: 0.8rem; /* Slashed from 0.95rem */
+    margin: 0 auto 1rem;
+    width: 100%;
+    opacity: 0.7;
+  }
+
   .hero-title {
     font-size: 2rem;
     line-height: 1.1;
