@@ -1811,7 +1811,7 @@ body::before {
   
   .hamburger-btn {
     display: flex;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
   }
 
   .nav-top-bar {
@@ -1849,6 +1849,15 @@ body::before {
     display: flex;
     flex-direction: column-reverse; /* Sidebar moves to bottom */
     gap: 1.5rem;
+    width: 100%;
+  }
+
+  .flex-col {
+    width: 100%;
+  }
+
+  .card {
+    width: 100%;
   }
 
   .grid {
@@ -1950,9 +1959,17 @@ body::before {
   }
 
   /* Dashboard Adjustments */
-  .grid {
-    display: flex;
-    flex-direction: column;
+  .header-top {
+    justify-content: space-between;
+    flex-direction: row !important; /* Force row to keep hamburger right */
+    align-items: center;
+    width: 100%;
+  }
+
+  .header-badges {
+    flex: 1;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 
   .site-title { font-size: 1.6rem; }

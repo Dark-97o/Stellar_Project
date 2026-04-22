@@ -1202,22 +1202,22 @@ function App() {
                 </span>
                 {hasAlerts && <div className="notification-dot" />}
               </div>
+              
+              <button 
+                className="hamburger-btn" 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Toggle Menu"
+              >
+                <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+                <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+                <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+              </button>
             </div>
           </div>
         </header>
 
         <main className="survivor-hub">
           <div className="nav-container">
-            <button 
-              className="hamburger-btn" 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle Menu"
-            >
-              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
-              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
-              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
-            </button>
-
             <nav className={`nav-top-bar ${isMenuOpen ? 'nav-top-bar--open' : ''}`}>
               <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('terminal'); setIsMenuOpen(false); }}>Payments</div>
               <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('multipay'); setIsMenuOpen(false); }}>Batch Transfer</div>
