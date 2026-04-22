@@ -62,6 +62,41 @@ The **DONATE** module interfaces directly with a WASM-based smart contract on th
 
 ---
 
+## 🌊 Feature Deep-Dive & Data Flows
+
+### 1. Multi-Wallet Gateway & Authentication Flow
+**Feature:** Secure, dynamic connectivity to the Stellar Testnet using various web3 wallet providers.
+**Data Flow:** 
+- The user initiates the uplink. `StellarWalletsKit` intercepts the request and scans the browser environment for supported extensions (Freighter, Rabe, Hana).
+- Once selected, the Kit securely requests the `publicKey` from the extension.
+- **State Injection:** The App captures the address, updates the global React context, and instantly triggers the `syncAllData` pipeline, dropping the dystopian UI into its "Authorized" layout.
+
+### 2. High-Performance Caching & Dashboard Telemetry
+**Feature:** Real-time data streaming (Balances, Network Leaderboards, Payment History) without encountering Horizon RPC rate-limits.
+**Data Flow:**
+- Instead of hitting the Horizon API on every render, the app utilizes an aggressive `sessionStorage` TTL (Time-To-Live) architecture.
+- **Whale Hunters (Network Leaderboard):** The app queries the latest ledger, extracts the top 50 active operations, filters the public keys, and queries Horizon for their XLM balances. This incredibly heavy calculation is immediately cached for 60 minutes.
+- **Account History:** Past payments are parsed from Horizon's `/operations` endpoint, decoded, and cached for 30 seconds.
+- **UX Flow:** During fetch cycles, a sleek `.skeleton-pulse` glass-morphic layout renders over the modules, guaranteeing zero layout shift while the background promises resolve.
+
+### 3. Advanced Batch Processing (MULTI-PAY)
+**Feature:** The ability to execute multiple Stellar XLM transactions simultaneously to different recipients in a single unified Ledger operation.
+**Data Flow:**
+- The user inputs a command script (e.g., `GABC... 100`) into the Batch Terminal.
+- The `stellar.js` engine parses the script line-by-line, validating Stellar address checksums and formatting the amounts.
+- A single `TransactionBuilder` is instantiated. Instead of one operation, the engine loops through the parsed array and chains multiple `Operation.payment()` calls into the exact same XDR payload.
+- The wallet signs once. If successful, the UI maps the individual results into a sleek, real-time progress bar tracking the batch status.
+
+### 4. Soroban Smart Contract & Diagnostics UI
+**Feature:** A robust Web3 interface mapping directly to a live, Rust-based WASM smart contract (`TranscendenceContract`) deployed on the Soroban Testnet.
+**Data Flow:**
+- **Pool Querying:** The dashboard polls the contract's `get_stats` to render the Global Pool balance and goal. It also queries `getEvents` to list the newest 5 donors chronologically.
+- **Contributions (Donate):** The UI builds an `Operation.invokeHostFunction` to call the `donate` function. It calculates footprint bounds dynamically and passes the XLM transfer.
+- **Admin Diagnostics Panel:** When the UI detects that the connected wallet address mathematically equals the Contract's `Admin` address, it decrypts a hidden `⚠ DIAGNOSTICS` tab.
+- **Security Testing Flow:** The Admin can trigger hostile operations (e.g., Malicious Double-Init, Unauthorized Withdraw, Protocol Pause). The UI dispatches the payloads to Soroban. The Rust contract successfully identifies the illegal behavior, executes a Wasm Trap (`panic!`), and the network rejects the uplink—which the UI beautifully renders as `MALICIOUS INIT REJECTED`, visually proving the security of the fund.
+
+---
+
 ## 📦 Setup Instructions
 
 ### Prerequisites
