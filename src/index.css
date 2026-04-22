@@ -1145,9 +1145,10 @@ body::before {
   display: none;
   flex-direction: column;
   justify-content: center;
+  align-items: center; /* Center lines */
   gap: 5px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1157,11 +1158,12 @@ body::before {
 }
 
 .ham-line {
-  width: 100%;
+  width: 24px; /* Fixed width prevents dot issue */
   height: 2px;
   background: var(--primary);
   border-radius: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: block; /* Ensure it's not collapsed */
 }
 
 .ham-line--open:nth-child(1) { transform: translateY(7px) rotate(45deg); }

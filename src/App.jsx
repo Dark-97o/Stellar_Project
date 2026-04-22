@@ -534,7 +534,17 @@ function App() {
               <div className="card-tag">Payments Gateway</div>
               <div className="card-body">
                 <div className="preview-frame">
-                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <video 
+                    key={`vid-${activeTab}`} 
+                    autoPlay 
+                    muted 
+                    loop 
+                    playsInline 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+                  >
+                    <source src="/img/pay.mov" type="video/quicktime" />
+                    <source src="/img/pay.mp4" type="video/mp4" />
+                  </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
                     <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>PAYMENT_NODE_LIVE</span>
@@ -571,7 +581,17 @@ function App() {
                 <div className="card-tag">Batch Payments</div>
                 <div className="card-body">
                 <div className="preview-frame">
-                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <video 
+                    key={`vid-multi-${activeTab}`} 
+                    autoPlay 
+                    muted 
+                    loop 
+                    playsInline 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+                  >
+                    <source src="/img/pay.mov" type="video/quicktime" />
+                    <source src="/img/pay.mp4" type="video/mp4" />
+                  </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
                     <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>BATCH_GATEWAY_ACTIVE</span>
@@ -675,7 +695,17 @@ function App() {
                 <div className="card-tag">Split Bill Calculator</div>
                 <div className="card-body">
                 <div className="preview-frame">
-                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <video 
+                    key={`vid-calc-${activeTab}`} 
+                    autoPlay 
+                    muted 
+                    loop 
+                    playsInline 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+                  >
+                    <source src="/img/pay.mov" type="video/quicktime" />
+                    <source src="/img/pay.mp4" type="video/mp4" />
+                  </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
                     <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>PRECISION_CALC_UPLINK</span>
@@ -823,7 +853,16 @@ function App() {
               <div className="card-tag">Soroban Relief Protocol</div>
               <div className="card-body">
                 <div className="preview-frame">
-                  <video src="/img/poverty.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <video 
+                    key={`vid-poverty-${activeTab}`} 
+                    autoPlay 
+                    muted 
+                    loop 
+                    playsInline 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+                  >
+                    <source src="/img/poverty.mp4" type="video/mp4" />
+                  </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
                     <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>LIVE_TX_STREAM</span>
@@ -1125,8 +1164,10 @@ function App() {
             muted 
             loop 
             playsInline
-            src="/img/vidbg.mov"
-          />
+          >
+            <source src="/img/vidbg.mov" type="video/quicktime" />
+            <source src="/img/vidbg.mp4" type="video/mp4" />
+          </video>
           
           <section className="landing-section hero-section">
             <div className="landing-content cinemax-layout">
