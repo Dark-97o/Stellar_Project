@@ -15,8 +15,16 @@ import {
   invokeContractInit,
   fundFromFaucet,
   sendMultiPayment,
+  invokeContractBuyNft,
+  invokeContractSellNft,
+  invokeAdminFreeNft,
+  invokeShopWithdraw,
+  fetchNftOwner,
+  fetchNftMetadata,
+  SHOP_CONTRACT_ID,
   ErrorTypes
 } from './utils/stellar';
+import { getXlmPrice } from './utils/PriceService';
 import { ALLOWED_WALLETS } from './utils/kit';
 import Spline from '@splinetool/react-spline';
 import logoImg from '/logo.png';
@@ -112,6 +120,112 @@ function App() {
   const [amt, setAmt] = useState('');
   const [txHash, setTxHash] = useState('');
   const [donationTxHash, setDonationTxHash] = useState('');
+  const [nfts, setNfts] = useState([
+    { id: 1, name: 'Nexus Core', priceUSD: 45, icon: '💠', owner: null, color: '#4facfe' },
+    { id: 2, name: 'Void Pulse', priceUSD: 85, icon: '⚛️', owner: null, color: '#00f2fe' },
+    { id: 3, name: 'Stellar Gate', priceUSD: 250, icon: '🌌', owner: null, color: '#a18cd1' },
+    { id: 4, name: 'Data Ghost', priceUSD: 120, icon: '👻', owner: null, color: '#fbc2eb' },
+  ]);
+  const [xlmPriceUSD, setXlmPriceUSD] = useState(0.166); // Calibrated to 6 XLM/$1
+  
+  useEffect(() => {
+    const updatePrice = async () => {
+      const price = await getXlmPrice();
+      setXlmPriceUSD(price);
+    };
+    updatePrice();
+    const interval = setInterval(updatePrice, 300000); // Sync every 5 mins
+    return () => clearInterval(interval);
+  }, []);
+  
+  const handleBuyNft = async (nftId) => {
+    if (!address) return setShowConnectPrompt(true);
+    const nft = nfts.find(n => n.id === nftId);
+    
+    if (!nft) {
+      log(`CRITICAL: NFT ID ${nftId} NOT FOUND IN LOCAL REGISTRY.`, "err");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      log(`INITIATING UPLINK FOR ${nft.name.toUpperCase()}...`, "info");
+      const res = await invokeContractBuyNft(
+        address, 
+        nftId, 
+        `metadata://stellar-nft-shop/${nftId}`, 
+        nft.priceUSD, 
+        (m, t) => log(m, t), 
+        walletType
+      );
+      
+      if (res && res.hash) {
+        log(`PURCHASE SUCCESSFUL: ${nft.name} MINTED. HASH: ${res.hash.substring(0,16)}...`, "ok");
+        // Optimistic update
+        setNfts(prev => prev.map(n => n.id === nftId ? { ...n, owner: address } : n));
+        setTimeout(() => syncAllData(), 5000);
+      }
+    } catch (e) {
+      log(`PURCHASE FAILED: ${e.message || "Unknown error during transaction."}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSellNft = async (nftId) => {
+    if (!address) return;
+    const nft = nfts.find(n => n.id === nftId);
+    
+    setLoading(true);
+    try {
+      log(`INITIATING SELL-BACK UPLINK FOR ${nft.name.toUpperCase()}...`, "warn");
+      const res = await invokeContractSellNft(address, nftId, nft.priceUSD, (m, t) => log(m, t), walletType);
+      
+      if (res.hash) {
+        log(`SELL-BACK SUCCESSFUL. ASSET RETURNED TO HUB. HASH: ${res.hash.substring(0,16)}...`, "ok");
+        setNfts(prev => prev.map(n => n.id === nftId ? { ...n, owner: null } : n));
+        setTimeout(() => syncAllData(), 5000);
+      }
+    } catch (e) {
+      log(`SELL-BACK FAILED: ${e.message}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminFreeNft = async (nftId) => {
+    if (!address) return;
+    setLoading(true);
+    try {
+      const res = await invokeAdminFreeNft(address, nftId, (m, t) => log(m, t), walletType);
+      if (res && res.hash) {
+        log(`ADMIN ACTION SUCCESSFUL: NFT ID ${nftId} RESET.`, "ok");
+        setTimeout(() => syncAllData(), 3000);
+      }
+    } catch (e) {
+      log(`ADMIN ACTION FAILED: ${e.message}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShopWithdraw = async () => {
+    const amt = prompt("ENTER AMOUNT TO WITHDRAW FROM SHOP TREASURY (XLM):");
+    if (!amt || isNaN(amt)) return;
+    setLoading(true);
+    try {
+      const res = await invokeShopWithdraw(address, parseFloat(amt), (m, t) => log(m, t), walletType);
+      if (res.hash) {
+        log(`TREASURY WITHDRAWAL SUCCESSFUL. HASH: ${res.hash.substring(0,16)}...`, "ok");
+        setTimeout(() => syncAllData(), 3000);
+      }
+    } catch (e) {
+      log(`WITHDRAWAL FAILED: ${e.message}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [showConnectPrompt, setShowConnectPrompt] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletType, setWalletType] = useState(null);
@@ -129,8 +243,10 @@ function App() {
 
   // New Feature States
   const [faucetLoading, setFaucetLoading] = useState(false);
+  const [selectedNft, setSelectedNft] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [shopBalance, setShopBalance] = useState('0.00');
   const [adminAddress, setAdminAddress] = useState(null);
   const [splitMode, setSplitMode] = useState('single'); // 'single' or 'multi'
   const [calcTotal, setCalcTotal] = useState('');
@@ -185,6 +301,18 @@ function App() {
       setFundGoal(relief.goal || 10000);
       setDonors(relief.donors);
       if (relief.admin) setAdminAddress(relief.admin);
+
+      // Sync Shop Balance
+      const sb = await getXlmBalance(SHOP_CONTRACT_ID);
+      setShopBalance(sb === "UPLINK_NOT_INITIALIZED" ? "0.00" : sb);
+
+      // Sync NFT Owners
+      const updatedNfts = await Promise.all(nfts.map(async (nft) => {
+        const owner = await fetchNftOwner(nft.id);
+        return { ...nft, owner };
+      }));
+      setNfts(updatedNfts);
+
     } catch (e) {
       console.warn("Sync Error:", e);
     } finally {
@@ -404,6 +532,13 @@ function App() {
             <div className="card card--tall">
               <div className="card-tag">Payments Gateway</div>
               <div className="card-body">
+                <div className="video-frame" style={{ width: '100%', height: '240px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
+                    <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>PAYMENT_NODE_LIVE</span>
+                  </div>
+                </div>
                 <form onSubmit={handleSend}>
                   <div className="input-group">
                     <label className="field-label">Target Identity (Public Key)</label>
@@ -434,7 +569,14 @@ function App() {
               <div className="card card--tall">
                 <div className="card-tag">Batch Payments</div>
                 <div className="card-body">
-                  <p className="field-label" style={{ marginBottom: '1rem' }}>Configure recipients then execute — each payment broadcasts independently with live status.</p>
+                <div className="video-frame" style={{ width: '100%', height: '220px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
+                    <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>BATCH_GATEWAY_ACTIVE</span>
+                  </div>
+                </div>
+                <p className="field-label" style={{ marginBottom: '1rem' }}>Configure recipients then execute — each payment broadcasts independently with live status.</p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.2rem', maxHeight: '340px', overflowY: 'auto' }}>
                     {multiRecipients.map((r, i) => {
@@ -531,7 +673,14 @@ function App() {
               <div className="card">
                 <div className="card-tag">Split Bill Calculator</div>
                 <div className="card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="video-frame" style={{ width: '100%', height: '200px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                  <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
+                    <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>PRECISION_CALC_UPLINK</span>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div className="input-group">
                       <label className="field-label">Total to Split (XLM)</label>
                       <input className="input" type="number" value={calcTotal} onChange={e => setCalcTotal(e.target.value)} placeholder="0.00" />
@@ -672,77 +821,94 @@ function App() {
             <div className="card">
               <div className="card-tag">Soroban Relief Protocol</div>
               <div className="card-body">
-                <p className="field-label">CONTRACT-MANAGED DISTRIBUTION</p>
-                <div className="progress-meter">
-                  <div className="progress-fill" style={{ width: `${progress}%` }} />
-                  <div className="progress-label">{progress.toFixed(1)}% SECURED</div>
+                <div className="video-frame" style={{ width: '100%', height: '260px', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                  <video src="/img/poverty.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+                  <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
+                    <span style={{ fontSize: '0.6rem', color: '#fff', fontWeight: 600, opacity: 0.8, letterSpacing: '1px' }}>LIVE_TX_STREAM</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                  <div><span className="field-label">Global Pool</span><br /><span className="balance-num" style={{ fontSize: '1.5rem' }}>{fundTotal.toLocaleString()}</span> XLM</div>
-                  <div style={{ textAlign: 'right' }}><span className="field-label">Target Goal</span><br /><span className="balance-num" style={{ fontSize: '1.5rem', opacity: 0.5 }}>{fundGoal.toLocaleString()}</span> XLM</div>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn--full" onClick={() => handleDonate(10)} disabled={loading || !address}>
-                    DONATE 10
-                  </button>
-                  <button className="btn btn--full" onClick={() => handleDonate(100)} disabled={loading || !address}>
-                    DONATE 100
-                  </button>
-                </div>
-                {donationTxHash && (
-                  <div className="tx-result" style={{ marginTop: '1.5rem' }}>
-                    <div className="sep" />
-                    <p className="tx-hash" style={{ fontSize: '0.65rem' }}>STATUS: SYNCED | HASH: {donationTxHash.substring(0,20)}...</p>
-                    <button
-                      className="btn btn--ghost btn--full"
-                      onClick={() => window.open(getExplorerUrl(donationTxHash), '_blank')}
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.75rem' }}>
+                    <p className="field-label" style={{ margin: 0, fontSize: '0.75rem' }}>PROTOCOL DISTRIBUTION PROGRESS</p>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>{progress.toFixed(1)}%</span>
+                  </div>
+                  <div style={{ height: '22px', width: '100%', background: 'rgba(255,255,255,0.03)', borderRadius: '100px', padding: '4px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        width: `${progress}%`, 
+                        height: '100%', 
+                        background: 'linear-gradient(90deg, #ffffff 0%, #eeeeee 100%)', 
+                        borderRadius: '100px',
+                        boxShadow: '0 0 25px rgba(255, 255, 255, 0.3)',
+                        transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative'
+                      }} 
                     >
-                      VIEW TRANSACTION ON STELLAR EXPERT ↗
-                    </button>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)', animation: 'scanning 2s infinite linear' }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <div><span className="field-label">Global Pool</span><br /><span className="balance-num" style={{ fontSize: '1.3rem' }}>{fundTotal.toLocaleString()}</span> <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>XLM</span></div>
+                  <div style={{ textAlign: 'right' }}><span className="field-label">Target Goal</span><br /><span className="balance-num" style={{ fontSize: '1.3rem', opacity: 0.5 }}>{fundGoal.toLocaleString()}</span> <span style={{ fontSize: '0.6rem', opacity: 0.3 }}>XLM</span></div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <button className="btn btn--full" onClick={() => handleDonate(10)} disabled={loading || !address} style={{ padding: '0.6rem' }}>
+                    DONATE 10 XLM
+                  </button>
+                  <button className="btn btn--full" onClick={() => handleDonate(100)} disabled={loading || !address} style={{ padding: '0.6rem' }}>
+                    DONATE 100 XLM
+                  </button>
+                </div>
+
+                {donationTxHash && (
+                  <div className="tx-result" style={{ marginBottom: '1.5rem' }}>
+                    <div className="sep" />
+                    <p className="tx-hash" style={{ fontSize: '0.6rem', opacity: 0.7 }}>SYNCED | {donationTxHash.substring(0,24)}...</p>
                   </div>
                 )}
-                <div className="sep" style={{ margin: '1.5rem 0' }} />
-                <p className="field-label" style={{ marginBottom: '1rem' }}>Latest Smart Contract Events</p>
-                <div className="leaderboard-list">
+
+                <div className="sep" style={{ margin: '1rem 0' }} />
+                <p className="field-label" style={{ marginBottom: '0.75rem' }}>Live Protocol Events</p>
+                <div className="leaderboard-list" style={{ maxHeight: '200px', overflowY: 'auto', gap: '2px', display: 'flex', flexDirection: 'column' }}>
                   {donors.length === 0 && (
                     <div style={{ padding: '1rem', opacity: 0.5, fontSize: '0.75rem', textAlign: 'center' }}>
-                      NO CONTRACT EVENTS DETECTED
+                      NO LIVE EVENTS
                     </div>
                   )}
                   {donors.map((d, i) => (
-                    <div key={i} className="leaderboard-item" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div key={i} className="leaderboard-item" style={{ padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
                       <span style={{
-                        fontSize: '0.6rem',
-                        fontWeight: 700,
-                        padding: '0.1rem 0.4rem',
+                        fontSize: '0.55rem',
+                        fontWeight: 800,
+                        padding: '0.1rem 0.35rem',
                         borderRadius: '3px',
-                        background: d.type === 'WITHDRAWAL' ? 'rgba(255,80,80,0.15)' : 'rgba(80,255,150,0.12)',
-                        color: d.type === 'WITHDRAWAL' ? '#ff6b6b' : '#4ade80',
-                        border: `1px solid ${d.type === 'WITHDRAWAL' ? '#ff6b6b44' : '#4ade8044'}`,
-                        flexShrink: 0
+                        background: d.type === 'WITHDRAWAL' ? 'rgba(255,80,80,0.1)' : 'rgba(35,209,139,0.1)',
+                        color: d.type === 'WITHDRAWAL' ? '#ff6b6b' : '#23d18b',
+                        border: `1px solid ${d.type === 'WITHDRAWAL' ? '#ff6b6b33' : '#23d18b33'}`,
+                        flexShrink: 0,
+                        textTransform: 'uppercase'
                       }}>
-                        {d.type || 'EVENT'}
+                        {d.type === 'WITHDRAWAL' ? 'OUT' : 'IN'}
                       </span>
-                      <span className="leaderboard-addr" style={{ fontSize: '0.68rem', flex: 1 }}>{d.addr}</span>
-                      <span className="leaderboard-amt" style={{ fontSize: '0.85rem', flexShrink: 0 }}>
-                        {d.type === 'WITHDRAWAL' ? '-' : '+'}{d.amt} XLM
+                      <span className="leaderboard-addr" style={{ fontSize: '0.65rem', opacity: 0.8, fontFamily: 'var(--font-mono)' }}>{formatAddress(d.addr, 6, 4)}</span>
+                      <span className="leaderboard-amt" style={{ fontSize: '0.8rem', fontWeight: 700, color: d.type === 'WITHDRAWAL' ? '#ff6b6b' : '#23d18b', flexShrink: 0 }}>
+                        {d.type === 'WITHDRAWAL' ? '-' : '+'}{d.amt}
                       </span>
                       {d.txHash && (
-                        <button
+                        <button 
                           onClick={() => window.open(getExplorerUrl(d.txHash), '_blank')}
-                          style={{
-                            background: 'none',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: 'rgba(255,255,255,0.6)',
-                            cursor: 'pointer',
-                            fontSize: '0.6rem',
-                            padding: '0.15rem 0.4rem',
-                            borderRadius: '3px',
-                            flexShrink: 0
+                          className="btn btn--ghost"
+                          style={{ 
+                            fontSize: '0.55rem', padding: '0.15rem 0.4rem', border: '1px solid rgba(255,255,255,0.1)', 
+                            color: 'rgba(255,255,255,0.5)', borderRadius: '3px', marginLeft: 'auto'
                           }}
-                          title={d.txHash}
                         >
-                          TX↗
+                          VERIFY
                         </button>
                       )}
                     </div>
@@ -819,7 +985,7 @@ function App() {
                     </div>
                   </div>
 
-                  <div style={{ padding: '1rem', background: 'rgba(255,80,80,0.05)', borderRadius: '8px', border: '1px solid rgba(255,80,80,0.2)' }}>
+                   <div style={{ padding: '1rem', background: 'rgba(255,80,80,0.05)', borderRadius: '8px', border: '1px solid rgba(255,80,80,0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <strong style={{ color: 'var(--red)' }}>4. Malicious Initialization</strong>
@@ -828,10 +994,102 @@ function App() {
                       <button className="btn btn--danger" onClick={handleMaliciousInit} disabled={loading}>TRIGGER HIJACK</button>
                     </div>
                   </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>5. Inventory Management</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Free all NFTs currently held by the Contract Hub.</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {nfts.filter(n => n.owner === SHOP_CONTRACT_ID).length > 0 ? (
+                           nfts.filter(n => n.owner === SHOP_CONTRACT_ID).map(n => (
+                             <button key={n.id} className="btn btn--ghost" style={{ fontSize: '0.6rem' }} onClick={() => handleAdminFreeNft(n.id)}>FREE ID {n.id}</button>
+                           ))
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: '#444' }}>NO ASSETS HELD BY HUB</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(79, 172, 254, 0.05)', borderRadius: '8px', border: '1px solid rgba(79, 172, 254, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>6. Shop Treasury Control</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Protocol Liquidity: <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{shopBalance} XLM</span></p>
+                      </div>
+                      <button className="btn btn--ghost" onClick={handleShopWithdraw} disabled={loading}>WITHDRAW FEES</button>
+                    </div>
+                  </div>
                 </div>
 
               </div>
             </div>
+          </div>
+        );
+      case 'shop':
+        return (
+          <div className="enter">
+            <div className="card" style={{ background: 'rgba(5,5,5,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="card-tag">Stellar NFT Shop</div>
+              <div className="card-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                  <p className="field-label">OFFICIAL ASSET MARKETPLACE</p>
+                  <div style={{ fontSize: '0.7rem', color: '#666', textAlign: 'right' }}>1 XLM ≈ ${xlmPriceUSD.toFixed(3)} USD (ORACLE FEED)</div>
+                </div>
+
+                <div className="shop-grid">
+                  {nfts.map(nft => {
+                    const xlmCost = nft.priceUSD * 6; // Fixed contract rate for transparency
+                    const isOwner = nft.owner === address;
+                    const isSold = nft.owner && !isOwner;
+                    
+                    return (
+                      <div key={nft.id} className="nft-card" onClick={() => setSelectedNft(nft)} style={{ cursor: 'pointer' }}>
+                        <div className="nft-image-container" style={{ background: `radial-gradient(circle at center, ${nft.color}22 0%, #000 100%)` }}>
+                          <div style={{ fontSize: '4rem', filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.2))' }}>{nft.icon}</div>
+                          {nft.owner && (
+                            <div style={{ 
+                              position: 'absolute', top: '10px', left: '10px', 
+                              background: 'rgba(0,0,0,0.7)', padding: '3px 10px', 
+                              borderRadius: '100px', fontSize: '0.6rem', 
+                              border: '1px solid rgba(255,255,255,0.2)', color: '#fff' 
+                            }}>
+                              {isOwner ? "YOU OWN THIS" : `HELD BY ${formatAddress(nft.owner, 4, 3)}`}
+                            </div>
+                          )}
+                          <div className="nft-badge" style={{ background: 'var(--primary)', color: '#000', fontWeight: 800 }}>TKN-{nft.id.toString().padStart(4, '0')}</div>
+                        </div>
+                        <div style={{ padding: '1.25rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 600, color: '#fff' }}>{nft.name}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>${nft.priceUSD}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'terminal_logs':
+        return (
+          <div className="card card--diag" style={{ height: '70vh' }}>
+            <div className="card-tag">Terminal Diagnostics</div>
+            <div className="card-body">
+              <div className="console" style={{ height: '100%' }}>
+                {logs.map((l, i) => (
+                  <div key={i} className={`console-line console-line--${l.type}`}>
+                    <span className="console-ts">[{l.ts}]</span>{l.msg}
+                  </div>
+                ))}
+                <div ref={logEnd} />
+              </div>
+            </div>
+            <button className="btn btn--danger" style={{ marginTop: '1rem', fontSize: '0.65rem', alignSelf: 'flex-start' }} onClick={() => setLogs([])}>Clear Console</button>
           </div>
         );
       default: return null;
@@ -919,17 +1177,24 @@ function App() {
       </div>
       
       <div className="app-container">
-        <header className="site-header">
-          <div className="header-top">
+        <header className="site-header" style={{ padding: '1rem 0' }}>
+          <div className="header-top" style={{ alignItems: 'center' }}>
             <div className="header-brand">
               <div className="header-brand-row">
-                <img src={logoImg} alt="Stellar Management Hub Logo" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '6px' }} />
-                <div><h1 className="site-title">STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '1.1rem', opacity: 0.9, fontWeight: 500, letterSpacing: '2px', color: 'var(--primary)' }}>MANAGEMENT INTERFACE V2.1</h1></div>
+                <img src={logoImg} alt="Stellar Management Hub Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', borderRadius: '8px' }} />
+                <div><h1 className="site-title" style={{ fontSize: '2.2rem', marginBottom: '4px', letterSpacing: '1px' }}>STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '0.9rem', opacity: 0.8, fontWeight: 500, letterSpacing: '2px', color: 'var(--primary)' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
-            <div className="header-badges">
-              <span className="badge badge--net">Testnet</span>
-              <span className="badge badge--warn">Restricted</span>
+            <div className="header-badges" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.4rem 1rem', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <span className={`dot ${address ? 'dot--on' : ''}`} style={{ marginRight: '0.5rem', width: '8px', height: '8px' }} />
+                {address ? (
+                  <span style={{ color: 'var(--success)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>CONNECTED: {formatAddress(address, 6, 4)}</span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px' }}>SYSTEM OFFLINE</span>
+                )}
+              </div>
+              <span className="badge badge--net" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }}>Testnet</span>
               <div className="notification-wrapper" onClick={() => { setActiveTab('events'); setHasAlerts(false); }} title="VIEW SYSTEM EVENTS">
                 <span className="notification-bell" style={{ fontSize: '1.2rem' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -938,29 +1203,50 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="header-status">
-            <span className={`dot ${address ? 'dot--on' : ''}`} />
-              {address ? (
-                <>
-                  <span style={{ color: '#23d18b', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '1px' }}>OFFICIAL UPLINK ACTIVE: {formatAddress(address, 6, 4)}</span>
-                </>
-              ) : <span style={{ color: '#ff5f5f', fontWeight: 700, letterSpacing: '1px' }}>SYSTEM OFFLINE</span>}
-          </div>
         </header>
 
-        <main className="survivor-hub">
-          <nav className="nav-top-bar">
-            <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Payments</div>
-            <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>Batch Transfer</div>
-            <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
-            <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
-            <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
-            {address && adminAddress && address === adminAddress && (
-              <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>Diagnostics</div>
-            )}
-          </nav>
+        <main className="survivor-hub" style={{ paddingBottom: '6rem' }}>
+          <div className="nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem', pointerEvents: 'auto' }}>
+            <nav className="nav-top-bar" style={{ margin: 0 }}>
+              <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Payments</div>
+              <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>Batch Transfer</div>
+              <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
+              <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
+              <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
+              {address && adminAddress && address === adminAddress && (
+                <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>Diagnostics</div>
+              )}
+            </nav>
+            <div 
+              className={`nav-item ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
+              onClick={() => setActiveTab('shop')}
+              style={{ 
+                background: activeTab === 'shop' ? 'var(--success)' : 'rgba(35, 209, 139, 0.05)', 
+                color: activeTab === 'shop' ? 'var(--bg-abyss)' : 'var(--success)',
+                border: '2px solid var(--success)',
+                fontWeight: 800,
+                padding: '0.5rem 1.8rem',
+                borderRadius: '100px',
+                cursor: 'pointer',
+                boxShadow: activeTab === 'shop' ? '0 0 20px rgba(35, 209, 139, 0.6)' : '0 0 10px rgba(35, 209, 139, 0.2)',
+                textTransform: 'uppercase',
+                transition: 'all 0.25s ease',
+                backdropFilter: 'blur(16px)',
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+              SHOP
+            </div>
+          </div>
 
-          <div className="bento-grid">
+          <div className="bento-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
             {/* ── LEFT COLUMN: Telemetry & Actions ── */}
             <div className="flex-col" style={{ gap: '1rem' }}>
               {address && (
@@ -973,6 +1259,20 @@ function App() {
                       {parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>XLM</span>
                     </div>
                   )}
+                  {/* Live Graph Mockup */}
+                  <div style={{ marginTop: '1rem', height: '40px', width: '100%', position: 'relative' }}>
+                    <svg viewBox="0 0 100 30" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+                      <defs>
+                        <linearGradient id="gradient-graph" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="var(--success)" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="var(--success)" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M0,30 L0,20 Q10,10 20,15 T40,25 T60,10 T80,18 T100,5 L100,30 Z" fill="url(#gradient-graph)" />
+                      <path d="M0,20 Q10,10 20,15 T40,25 T60,10 T80,18 T100,5" fill="none" stroke="var(--success)" strokeWidth="2" />
+                    </svg>
+                    <div style={{ position: 'absolute', top: '-5px', right: '0', fontSize: '0.65rem', color: 'var(--success)', fontWeight: 600 }}>+2.4% LIVE</div>
+                  </div>
                 </div>
               )}
 
@@ -983,11 +1283,29 @@ function App() {
                 </div>
               )}
 
-              <div className="card" style={{ padding: '1rem' }}>
+               <div className="card" style={{ padding: '1rem' }}>
                  <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Quick Protocols</div>
-                 <div className="flex-col" style={{ gap: '0.5rem' }}>
+                 <div className="flex-col" style={{ gap: '0.75rem' }}>
+                   
+                   <div 
+                     onClick={() => setActiveTab('fund')}
+                     style={{ 
+                       display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1rem', 
+                       background: 'rgba(255,255,255,0.03)', borderRadius: '12px', cursor: 'pointer', 
+                       border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.2s'
+                     }}
+                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = '#fff'; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                   >
+                     <img src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=400&q=80" alt="Relief Fund" style={{ width: '100%', height: '100px', borderRadius: '8px', objectFit: 'cover' }} />
+                     <div style={{ textAlign: 'center' }}>
+                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff', marginBottom: '0px', letterSpacing: '1.5px' }}>POVERTY RELIEF FUND</div>
+                     </div>
+                   </div>
+
                    <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('faucet')}>Testnet Faucet</button>
-                   <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('fund')}>Soroban Relief Fund</button>
+                   <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('rank')}>Network Leaderboards</button>
+                   <button className="btn btn--ghost btn--full" onClick={() => setActiveTab('terminal_logs')}>Terminal</button>
                  </div>
               </div>
             </div>
@@ -995,22 +1313,6 @@ function App() {
             {/* ── CENTER COLUMN: Primary Interface ── */}
             <div className="flex-col" style={{ gap: '1.5rem' }}>
               {renderContent()}
-            </div>
-
-            {/* ── RIGHT COLUMN: Diagnostics ── */}
-            <div className="card card--diag">
-              <div className="card-tag">Terminal Diagnostics</div>
-              <div className="card-body">
-                <div className="console">
-                  {logs.map((l, i) => (
-                    <div key={i} className={`console-line console-line--${l.type}`}>
-                      <span className="console-ts">[{l.ts}]</span>{l.msg}
-                    </div>
-                  ))}
-                  <div ref={logEnd} />
-                </div>
-              </div>
-              <button className="btn btn--danger" style={{ marginTop: '1rem', fontSize: '0.65rem' }} onClick={() => setLogs([])}>Clear Console</button>
             </div>
           </div>
         </main>
@@ -1189,6 +1491,83 @@ function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedNft && (
+        <div className="modal-overlay" onClick={() => setSelectedNft(null)}>
+          <div 
+            className="modal-content card" 
+            style={{ width: 600, padding: 0, overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                height: '300px', 
+                background: `radial-gradient(circle at center, ${selectedNft.color}33 0%, #000 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}>
+                <div style={{ fontSize: '8rem', filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3))' }}>{selectedNft.icon}</div>
+                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
+                  <button onClick={() => setSelectedNft(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%' }}>✕</button>
+                </div>
+                <div style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem' }}>
+                   <div style={{ background: 'var(--primary)', color: '#000', padding: '4px 12px', borderRadius: '4px', fontWeight: 800, fontSize: '0.8rem' }}>TKN-{selectedNft.id.toString().padStart(4, '0')}</div>
+                </div>
+                {selectedNft.owner && (
+                   <div style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', background: 'rgba(0,0,0,0.7)', padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                     CURRENT OWNER: {formatAddress(selectedNft.owner)}
+                   </div>
+                )}
+              </div>
+              
+              <div style={{ padding: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>{selectedNft.name}</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Strategic Digital Asset • Soroban Token Standard</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary)' }}>{selectedNft.priceUSD * 6} XLM</div>
+                    <div style={{ fontSize: '0.85rem', color: '#555' }}>VALUATION: ${selectedNft.priceUSD} USD</div>
+                  </div>
+                </div>
+
+                <div className="sep" style={{ margin: '1.5rem 0' }} />
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <p className="field-label" style={{ marginBottom: '0.75rem' }}>Ownership History</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ color: '#fff' }}>GENESIS MINT</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{formatAddress(SHOP_CONTRACT_ID)}</span>
+                    </div>
+                    {selectedNft.owner && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--primary-faint)' }}>
+                        <span style={{ color: 'var(--primary)' }}>CURRENT HOLDER</span>
+                        <span style={{ color: '#fff' }}>{formatAddress(selectedNft.owner)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  {selectedNft.owner === address ? (
+                    <button className="btn btn--danger btn--full" onClick={() => { handleSellNft(selectedNft.id); setSelectedNft(null); }} disabled={loading}>LIQUIDATE ASSET (SELL)</button>
+                  ) : selectedNft.owner && selectedNft.owner !== address ? (
+                    <button className="btn btn--full" style={{ opacity: 0.3, cursor: 'not-allowed' }} disabled>PRIVATE ASSET</button>
+                  ) : (
+                    <button className="btn btn--full" style={{ background: '#fff', color: '#000', fontWeight: 700 }} onClick={() => { handleBuyNft(selectedNft.id); setSelectedNft(null); }} disabled={loading}>
+                      {loading ? <span className="spinner" /> : 'CONFIRM ACQUISITION'}
+                    </button>
+                  )}
+                  <button className="btn btn--ghost" onClick={() => setSelectedNft(null)}>CANCEL</button>
+                </div>
               </div>
             </div>
           </div>

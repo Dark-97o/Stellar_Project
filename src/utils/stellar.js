@@ -13,8 +13,13 @@ const rpcServer = new StellarSdk.rpc.Server('https://soroban-testnet.stellar.org
 
 const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;
 export const RELIEF_ADDR = "GDUAGNZBL47ZKPR2R6KBJGETMVBL25XH3LRA4KFPDD33FSBMIHUCLRIA";
-// Placeholder for Level 2 Soroban Contract ID
+// Level 2 Soroban Contract ID
 export const CONTRACT_ID = "CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5"; 
+
+// Level 4 NFT Marketplace Contract IDs
+export const NFT_CONTRACT_ID = "CAMRRPYB6WXPPSIFZJJZRUIQXE7GELBOZVJST56X5MF2MEYYZRSLM3ZJ";
+export const SHOP_CONTRACT_ID = "CDUHM32DBT53G5XFNJS7JXXHCEHAFEC4IY52NR3THRG2XIFO3LZSEFIK";
+export const XLM_TOKEN_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
 // Initialize Multi-Wallet Kit (using local shim)
 const kit = new StellarWalletsKit({
@@ -67,12 +72,43 @@ export const connectWallet = async (walletType) => {
  */
 export const getXlmBalance = async (publicKey) => {
   try {
+    // If it's a contract ID (starts with C), use SAC query
+    if (publicKey.startsWith('C')) {
+      return await getContractXlmBalance(publicKey);
+    }
     const account = await horizonServer.loadAccount(publicKey);
     const nativeBalance = account.balances.find((b) => b.asset_type === 'native');
     return nativeBalance ? nativeBalance.balance : "0.00";
   } catch (error) {
     if (error.response?.status === 404) return ErrorTypes.UNFUNDED_ACCOUNT;
     throw error;
+  }
+};
+
+/**
+ * Fetches XLM balance for a contract via SAC
+ */
+export const getContractXlmBalance = async (contractId) => {
+  try {
+    const server = new StellarSdk.Rpc.Server(RPC_URL);
+    const xlmContract = new StellarSdk.Contract(XLM_TOKEN_ID);
+    
+    const balanceOp = xlmContract.call("balance", StellarSdk.nativeToScVal(contractId, { type: "address" }));
+    const sim = await server.simulateTransaction(
+      new StellarSdk.TransactionBuilder(new StellarSdk.Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0"), { fee: "100", networkPassphrase: StellarSdk.Networks.TESTNET })
+        .addOperation(balanceOp)
+        .setTimeout(30)
+        .build()
+    );
+
+    if (sim.result) {
+      const balance = StellarSdk.scValToNative(sim.result.retval);
+      return (Number(balance) / 10000000).toFixed(2); // Convert stroops to XLM
+    }
+    return "0.00";
+  } catch (e) {
+    console.error("SAC Balance Query Failed:", e);
+    return "0.00";
   }
 };
 
@@ -297,47 +333,58 @@ export const fetchReliefFundStats = async () => {
  * Demonstrates calling a contract function from the frontend
  */
 const executeSorobanOperation = async (publicKey, operation, onLog, walletType) => {
-  const sourceAccount = await horizonServer.loadAccount(publicKey);
-  let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
-    fee: "100",
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(operation)
-    .setTimeout(30)
-    .build();
-
-  onLog("SIMULATING UPLINK RESOURCES...", "info");
-  tx = await rpcServer.prepareTransaction(tx);
-  
-  onLog("UPLINK PENDING: AWAITING SIGNATURE...", "warn");
-  const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
-    networkPassphrase: NETWORK_PASSPHRASE,
-    address: publicKey,
-    walletType
-  });
-  
-  onLog("SIGNATURE ACQUIRED. BROADCASTING TO SOROBAN RPC...", "ok");
-  if (typeof signedTxXdr !== 'string') {
-    throw new Error(`INVALID_SIGNATURE: Received ${typeof signedTxXdr} instead of string.`);
-  }
-
-  const rpcUrl = 'https://soroban-testnet.stellar.org';
-  const rpcResponse = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: Date.now(), method: 'sendTransaction',
-      params: { transaction: signedTxXdr }
+  try {
+    const sourceAccount = await horizonServer.loadAccount(publicKey);
+    let tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: "1000", // Increased fee for Soroban
+      networkPassphrase: NETWORK_PASSPHRASE,
     })
-  });
+      .addOperation(operation)
+      .setTimeout(60)
+      .build();
 
-  if (!rpcResponse.ok) throw new Error(`UPLINK_HTTP_ERR: ${rpcResponse.status} ${rpcResponse.statusText}`);
-  const rpcResult = await rpcResponse.json();
-  if (rpcResult.error) throw new Error(`RPC_ERR ${rpcResult.error.code}: ${rpcResult.error.message}`);
-  
-  const data = rpcResult.result;
-  if (data.status === 'ERROR') throw new Error(`UPLINK_REJECTED: ${data.errorResultXdr || 'Transaction Logic Failed'}`);
-  return { hash: data.hash };
+    onLog("SIMULATING CONTRACT EXECUTION...", "info");
+    tx = await rpcServer.prepareTransaction(tx);
+    
+    onLog("UPLINK READY: AWAITING SIGNATURE...", "warn");
+    const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
+      networkPassphrase: NETWORK_PASSPHRASE,
+      address: publicKey,
+      walletType
+    });
+    
+    onLog("SIGNATURE ACQUIRED. BROADCASTING...", "ok");
+    const sendResponse = await rpcServer.sendTransaction(StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE));
+    
+    if (sendResponse.status === 'ERROR') {
+      throw new Error(`RPC_REJECTED: ${sendResponse.errorResultXdr}`);
+    }
+
+    onLog("TRANSACTION SUBMITTED. POLLING FOR INCLUSION...", "info");
+    
+    // Poll for status
+    let status = 'PENDING';
+    let txHash = sendResponse.hash;
+    let attempts = 0;
+    
+    while (status === 'PENDING' && attempts < 10) {
+      const txResponse = await rpcServer.getTransaction(txHash);
+      status = txResponse.status;
+      if (status === 'SUCCESS') {
+        onLog("CONTRACT TRANSACTION FINALIZED.", "ok");
+        return { hash: txHash };
+      } else if (status === 'FAILED') {
+        throw new Error("CONTRACT_EXECUTION_FAILED");
+      }
+      attempts++;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    
+    return { hash: txHash };
+  } catch (err) {
+    console.error("Soroban Error:", err);
+    throw err;
+  }
 };
 
 export const invokeContractDonate = async (publicKey, amount, onLog, walletType) => {
@@ -392,6 +439,116 @@ export const invokeContractInit = async (publicKey, onLog, walletType) => {
     StellarSdk.nativeToScVal(10000n, { type: "i128" })
   );
   return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+/* ── LEVEL 4 NFT SHOP ACTIONS ───────────────────────────────── */
+
+/**
+ * Buy an NFT via the Shop contract (ICC)
+ */
+export const invokeContractBuyNft = async (publicKey, nftId, metadata, priceUsd, onLog, walletType) => {
+  onLog(`INITIATING NFT ACQUISITION: ID ${nftId} via ICC...`, "info");
+  const contract = new StellarSdk.Contract(SHOP_CONTRACT_ID);
+  const op = contract.call(
+    "buy_nft",
+    StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+    StellarSdk.nativeToScVal(nftId, { type: "u32" }),
+    StellarSdk.nativeToScVal(metadata, { type: "string" }),
+    StellarSdk.nativeToScVal(priceUsd, { type: "u32" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+/**
+ * Sell back an NFT to the hub (ICC)
+ */
+export const invokeContractSellNft = async (publicKey, nftId, priceUSD, onLog, walletType) => {
+  onLog(`INITIATING NFT LIQUIDATION: ID ${nftId}...`, "warn");
+  const contract = new StellarSdk.Contract(SHOP_CONTRACT_ID);
+  const op = contract.call(
+    "sell_nft",
+    StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+    StellarSdk.nativeToScVal(nftId, { type: "u32" }),
+    StellarSdk.nativeToScVal(priceUSD, { type: "u32" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+/**
+ * Admin: Free/Reset an NFT held by the contract
+ */
+export const invokeAdminFreeNft = async (publicKey, nftId, onLog, walletType) => {
+  onLog(`ADMIN: COMMANDING NFT RESET FOR ID ${nftId}...`, "warn");
+  const contract = new StellarSdk.Contract(SHOP_CONTRACT_ID);
+  const op = contract.call(
+    "admin_free_nft",
+    StellarSdk.nativeToScVal(nftId, { type: "u32" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+/**
+ * Admin: Withdraw XLM from Shop Treasury
+ */
+export const invokeShopWithdraw = async (publicKey, amountXlm, onLog, walletType) => {
+  onLog(`ADMIN: WITHDRAWING ${amountXlm} XLM FROM SHOP TREASURY...`, "warn");
+  const contract = new StellarSdk.Contract(SHOP_CONTRACT_ID);
+  // Convert XLM to stroops (amount * 10^7)
+  const stroops = BigInt(Math.floor(amountXlm * 10000000));
+  const op = contract.call(
+    "withdraw_xlm",
+    StellarSdk.nativeToScVal(publicKey, { type: "address" }),
+    StellarSdk.nativeToScVal(stroops, { type: "i128" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
+/**
+ * Query the owner of a specific NFT
+ */
+export const fetchNftOwner = async (nftId) => {
+  try {
+    const contract = new StellarSdk.Contract(NFT_CONTRACT_ID);
+    const dummyAccount = new StellarSdk.Account("GB2VHOGXRWAF53JHDTBXYV3FZUNSTTNCTAVA2M5NLVXPFDVYDSVE2HBJ", "0");
+    const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+      fee: "100",
+      networkPassphrase: NETWORK_PASSPHRASE
+    })
+      .addOperation(contract.call("owner_of", StellarSdk.nativeToScVal(nftId, { type: "u32" })))
+      .setTimeout(30).build();
+    
+    const sim = await rpcServer.simulateTransaction(tx);
+    if (sim.result?.retval) {
+      return StellarSdk.scValToNative(sim.result.retval);
+    }
+  } catch (e) {
+    // Return null if NFT doesn't exist or error occurs
+  }
+  return null;
+};
+
+/**
+ * Query metadata for an NFT
+ */
+export const fetchNftMetadata = async (nftId) => {
+  try {
+    const contract = new StellarSdk.Contract(NFT_CONTRACT_ID);
+    const dummyAccount = new StellarSdk.Account("GB2VHOGXRWAF53JHDTBXYV3FZUNSTTNCTAVA2M5NLVXPFDVYDSVE2HBJ", "0");
+    const tx = new StellarSdk.TransactionBuilder(dummyAccount, {
+      fee: "100",
+      networkPassphrase: NETWORK_PASSPHRASE
+    })
+      .addOperation(contract.call("get_metadata", StellarSdk.nativeToScVal(nftId, { type: "u32" })))
+      .setTimeout(30).build();
+    
+    const sim = await rpcServer.simulateTransaction(tx);
+    if (sim.result?.retval) {
+      return StellarSdk.scValToNative(sim.result.retval);
+    }
+  } catch (e) {
+    // Return null if NFT doesn't exist
+  }
+  return null;
 };
 
 /**
