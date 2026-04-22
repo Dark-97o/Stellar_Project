@@ -1166,7 +1166,7 @@ function App() {
             playsInline
           >
             <source src="/img/vidbg.mov" type="video/quicktime" />
-            <source src="/img/vidbg.mp4" type="video/mp4" />
+            <source src="/img/poverty.mp4" type="video/mp4" />
           </video>
           
           <section className="landing-section hero-section">
