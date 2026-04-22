@@ -188,12 +188,16 @@ https://github.com/user-attachments/assets/0df2d724-17d5-4614-9918-5c0a46ce9572
 
 ## 📜 Deployed Contracts & Transactions
 
-| Resource | Address / Hash |
-|---|---|
-| **Contract Address** | `CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5` |
-| **Transaction Hash** | `72fc0335e3b271d1e211295e63a1772a4345bd7414965f16e4207974255ad6cb` |
-
-
+| Resource | Address / Hash | Role |
+|---|---|---|
+| **Contract Address Relief Fund** | `CA2HLEFQOV7TITGBR2XYWMZ6OVPPJMOHLFJYMWIZPZ2AKWCHGEFHWYG5` | `Relief Fund Contract`|
+| **Transaction Hash** | `72fc0335e3b271d1e211295e63a1772a4345bd7414965f16e4207974255ad6cb` | `Relief Fund Contract Deployment Tx`|
+| **Contract Address NFT Standard** | `CAMRRPYB6WXPPSIFZJJZRUIQXE7GELBOZVJST56X5MF2MEYYZRSLM3ZJ` | `NFT Standard Contract`|
+| **Transaction Hash** | `ccf3e1264526c06b12b8957a7a3f61b51a6ec3913128da041cedc3768bb80f9d` | `NFT Standard Contract Deployment Tx`|
+| **Contract Address NFT Shop** | `CDUHM32DBT53G5XFNJS7JXXHCEHAFEC4IY52NR3THRG2XIFO3LZSEFIK` | `NFT Shop Contract`|
+| **Transaction Hash** | `0c6bf49cdad29a9bf9d2059f292f4e5e4f8e3613d897f2cf24ce4fc06a402367` | `NFT Shop Contract Deployment Tx`|
+| **Native XLM Token ID** | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` | `Native XLM Token`|
+| `There is no separate Liquidity Pool (LP) contract deployed. Instead, the NFTShop contract acts as the primary treasury/escrow. All XLM from NFT purchases is held directly by the NFTShop contract ID (CDUH...FIK) to fund future buybacks and liquidations.` |
 
 
 ---
