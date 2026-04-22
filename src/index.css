@@ -1144,29 +1144,29 @@ body::before {
 .hamburger-btn {
   display: none;
   flex-direction: column;
-  justify-content: space-around;
-  width: 2rem;
-  height: 2rem;
+  justify-content: center;
+  gap: 5px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
   z-index: 1000;
+  margin-left: 0.8rem;
 }
 
 .ham-line {
-  width: 2rem;
-  height: 0.25rem;
+  width: 100%;
+  height: 2px;
   background: var(--primary);
-  border-radius: 10px;
-  transition: all 0.3s linear;
-  position: relative;
-  transform-origin: 1px;
+  border-radius: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.ham-line--open:nth-child(1) { transform: rotate(45deg); }
+.ham-line--open:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .ham-line--open:nth-child(2) { opacity: 0; }
-.ham-line--open:nth-child(3) { transform: rotate(-45deg); }
+.ham-line--open:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* ── LAYOUT & HUB ── */
 .survivor-hub {
@@ -1264,14 +1264,15 @@ body::before {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 8, 15, 0.85);
-  backdrop-filter: blur(12px);
-  z-index: 1000;
+  background: rgba(3, 8, 15, 0.9);
+  backdrop-filter: blur(15px);
+  z-index: 2000;
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Moved to top */
   justify-content: center;
-  padding: 2rem;
+  padding: 10vh 1rem 2rem; /* Strategic top padding */
   animation: fade-in 0.3s ease-out;
+  overflow-y: auto;
 }
 
 .modal-content {
