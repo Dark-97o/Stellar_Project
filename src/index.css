@@ -1140,6 +1140,34 @@ body::before {
 .leaderboard-addr { flex: 1; font-size: 0.8rem; color: #c8bfa8; font-family: var(--font-mono); }
 .leaderboard-amt { font-family: var(--font-display); color: var(--yellow); font-size: 1.1rem; }
 
+/* ── NAVIGATION & HAMBURGER ── */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1000;
+}
+
+.ham-line {
+  width: 2rem;
+  height: 0.25rem;
+  background: var(--primary);
+  border-radius: 10px;
+  transition: all 0.3s linear;
+  position: relative;
+  transform-origin: 1px;
+}
+
+.ham-line--open:nth-child(1) { transform: rotate(45deg); }
+.ham-line--open:nth-child(2) { opacity: 0; }
+.ham-line--open:nth-child(3) { transform: rotate(-45deg); }
+
 /* ── LAYOUT & HUB ── */
 .survivor-hub {
   padding-bottom: 6rem;
@@ -1781,6 +1809,48 @@ body::before {
   .app-container { padding: 1rem; }
   .site-title { font-size: 2rem; }
   
+  .hamburger-btn {
+    display: flex;
+    margin-bottom: 1rem;
+  }
+
+  .nav-top-bar {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-top-bar--open {
+    display: flex;
+  }
+
+  .nav-item {
+    width: 100%;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .shop-nav-btn {
+    width: 100% !important;
+    margin-top: 0.5rem;
+    justify-content: center;
+  }
+
+  .bento-grid {
+    display: flex;
+    flex-direction: column-reverse; /* Sidebar moves to bottom */
+    gap: 1.5rem;
+  }
+
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
@@ -1880,42 +1950,6 @@ body::before {
   }
 
   /* Dashboard Adjustments */
-  .bento-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .multipay-row {
-    grid-template-columns: 1fr 80px; /* Stack on mobile, only show destination and amount */
-    gap: 0.5rem;
-  }
-
-  .multipay-row > *:nth-child(3),
-  .multipay-row > *:nth-child(4) {
-    display: none; /* Hide delete and status on tiny row, better as a list card later but for now just compact */
-  }
-
-  .terminal-panel {
-    height: 50vh; /* Shorter for mobile */
-  }
-
-  .nav-container {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .nav-top-bar {
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-    padding: 0.5rem;
-  }
-
-  .shop-nav-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
   .grid {
     display: flex;
     flex-direction: column;

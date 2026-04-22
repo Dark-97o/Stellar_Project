@@ -242,6 +242,7 @@ function App() {
   const [fundGoal, setFundGoal] = useState(10000);
 
   // New Feature States
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [faucetLoading, setFaucetLoading] = useState(false);
   const [selectedNft, setSelectedNft] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1207,27 +1208,37 @@ function App() {
 
         <main className="survivor-hub">
           <div className="nav-container">
-            <nav className="nav-top-bar">
-              <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Payments</div>
-              <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>Batch Transfer</div>
-              <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
-              <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
-              <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
-              {address && adminAddress && address === adminAddress && (
-                <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>Diagnostics</div>
-              )}
-            </nav>
-            <div 
-              className={`nav-item shop-nav-btn ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
-              onClick={() => setActiveTab('shop')}
+            <button 
+              className="hamburger-btn" 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle Menu"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-              </svg>
-              SHOP
-            </div>
+              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+              <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
+            </button>
+
+            <nav className={`nav-top-bar ${isMenuOpen ? 'nav-top-bar--open' : ''}`}>
+              <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('terminal'); setIsMenuOpen(false); }}>Payments</div>
+              <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('multipay'); setIsMenuOpen(false); }}>Batch Transfer</div>
+              <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('calculator'); setIsMenuOpen(false); }}>Split Bill</div>
+              <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('tracker'); setIsMenuOpen(false); }}>History</div>
+              <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('events'); setIsMenuOpen(false); }}>System Events</div>
+              {address && adminAddress && address === adminAddress && (
+                <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('diagnostics'); setIsMenuOpen(false); }}>Diagnostics</div>
+              )}
+              <div 
+                className={`nav-item shop-nav-btn ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
+                onClick={() => { setActiveTab('shop'); setIsMenuOpen(false); }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                SHOP
+              </div>
+            </nav>
           </div>
 
           <div className="bento-grid">
