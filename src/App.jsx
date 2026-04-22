@@ -1219,11 +1219,11 @@ function App() {
       </div>
       
       <div className="app-container">
-        <header className="site-header" style={{ padding: '1rem 0' }}>
-          <div className="header-top" style={{ alignItems: 'center' }}>
+        <header className="site-header">
+          <div className="header-top">
             <div className="header-brand">
               <div className="header-brand-row">
-                <img src={logoImg} alt="Stellar Management Hub Logo" style={{ width: '60px', height: '60px', objectFit: 'contain', borderRadius: '8px' }} />
+                <img src={logoImg} alt="SMH Logo" className="header-logo-mobile" />
                 <div><h1 className="site-title" style={{ fontSize: '2.2rem', marginBottom: '4px', letterSpacing: '1px' }}>STELLAR NETWORK</h1><h1 className="site-title" style={{ fontSize: '0.9rem', opacity: 0.8, fontWeight: 500, letterSpacing: '2px', color: 'var(--primary)' }}>MANAGEMENT INTERFACE V2.1</h1></div>
               </div>
             </div>
