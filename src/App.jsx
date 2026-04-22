@@ -1149,7 +1149,7 @@ function App() {
               </div>
 
               <div className="hero-lower-zone">
-                <div className="feature-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem', width: '100%' }}>
+                <div className="feature-row">
                   {services.map((s, i) => (
                     <div key={i} className="feature-item card" style={{ padding: '1.25rem', borderRadius: '12px', background: 'rgba(10,10,10,0.8)' }}>
                       <h3 className="feature-title" style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '0.5rem' }}>{s.title}</h3>

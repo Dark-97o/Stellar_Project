@@ -1776,22 +1776,27 @@ body::before {
   }
 
   .feature-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns, 3 rows */
+    gap: 0.75rem;
     width: 100%;
   }
 
   .feature-item {
-    flex: 1 1 140px; /* Allow cards to shrink/grow and wrap */
-    max-width: 180px;
     padding: 1.25rem;
     text-align: center;
+    min-width: 0;
   }
 
   .feature-title {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+  }
+
+  .feature-desc {
+    display: block; /* Show descriptions in 2x3 view as there is more space */
+    font-size: 0.65rem;
+    opacity: 0.7;
   }
 
   /* Dashboard Adjustments */
@@ -1838,9 +1843,12 @@ body::before {
 @media (max-width: 420px) {
   .hero-title { font-size: 1.8rem; }
   
-  .feature-item {
-    flex: 1 1 100%; /* Force single column on tiny screens */
-    max-width: 100%;
+  .feature-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .feature-title {
+    font-size: 0.65rem;
   }
   
   .site-title { font-size: 1.3rem; }
