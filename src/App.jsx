@@ -70,6 +70,30 @@ class ErrorBoundary extends Component {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   REUSABLE COMPONENTS
+   ══════════════════════════════════════════════════════════════ */
+const AppFooter = () => (
+  <footer className="site-footer" style={{ padding: '2rem 4rem', background: '#000', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="footer-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ color: '#666', fontSize: '0.8rem' }}>© 2026 STELLAR TERMINAL <span className="dot-sep">•</span> MANAGEMENT SUITE <span className="dot-sep">•</span> @subhranil</div>
+      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <a href="https://github.com/Dark-97o/" target="_blank" rel="noreferrer" style={{ color: '#888', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#fff'} onMouseLeave={e => e.target.style.color = '#888'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/in/subhranil-baul-b4802a287/" target="_blank" rel="noreferrer" style={{ color: '#888', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#fff'} onMouseLeave={e => e.target.style.color = '#888'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+        </a>
+      </div>
+      <div className="tech-stack" style={{ display: 'flex', gap: '1rem', color: '#666', fontSize: '0.8rem' }}>
+        <span>STELLAR</span>
+        <span>SOROBAN</span>
+        <span>REACT</span>
+      </div>
+    </div>
+  </footer>
+);
+
+/* ══════════════════════════════════════════════════════════════
    MAIN APPLICATION
    ══════════════════════════════════════════════════════════════ */
 function App() {
@@ -88,8 +112,12 @@ function App() {
   const [amt, setAmt] = useState('');
   const [txHash, setTxHash] = useState('');
   const [donationTxHash, setDonationTxHash] = useState('');
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletType, setWalletType] = useState(null);
+
+  const isLoginRequired = !isLanding && !address;
+  const displayPrompt = (showConnectPrompt || isLoginRequired) && !showWalletModal;
 
   // Real Data States
   const [history, setHistory] = useState([]);
@@ -166,7 +194,7 @@ function App() {
 
   /* ── LEVEL 2 WALLET ACTIONS ───────────────────────────────── */
   const handleConnect = () => {
-    setShowWalletModal(true);
+    setShowConnectPrompt(true);
   };
 
   const connectToSpecificWallet = async (type) => {
@@ -728,8 +756,7 @@ function App() {
         return (
           <div className="enter">
             <div className="card">
-              <div className="card-corner-br" />
-              <div className="card-tag">✦ Network Stakeholders</div>
+              <div className="card-tag">Network Stakeholders</div>
               <div className="card-body">
                 <p className="field-label" style={{ marginBottom: '1rem' }}>REAL-TIME TOP HOLDERS (TESTNET)</p>
                 <div className="leaderboard-list">
@@ -752,7 +779,7 @@ function App() {
         return (
           <div className="enter">
             <div className="card" style={{ border: '1px solid var(--red)' }}>
-              <div className="card-tag" style={{ color: 'var(--red)', borderLeftColor: 'var(--red)' }}>⚠ Admin Security Tests</div>
+              <div className="card-tag" style={{ color: 'var(--red)', borderLeftColor: 'var(--red)' }}>Admin Security Tests</div>
               <div className="card-body">
                 <p className="field-label" style={{ marginBottom: '1.5rem', color: 'var(--text-main)', opacity: 0.8 }}>
                   These strict actions execute live invocations simulating Soroban Testnet security features. 
@@ -846,31 +873,29 @@ function App() {
             <div className="landing-content cinemax-layout">
               <div className="hero-upper-zone">
                 <div className="hero-text-pane">
-                  <h1 className="hero-title">
+                  <h1 className="hero-title" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                     COMMAND THE <br />
-                    <span className="text-cyan">STELLAR NETWORK</span>
+                    <span style={{ color: '#fff' }}>STELLAR NETWORK</span>
                   </h1>
-                  <p className="hero-subtitle">Secure, lighting-fast, global terminal uplink.</p>
-                  <button className="pill-btn" onClick={handleGetStarted}>
+                  <p className="hero-subtitle" style={{ color: '#888', fontFamily: 'Inter, system-ui, sans-serif' }}>Secure, lightning-fast, global terminal uplink.</p>
+                  <button className="btn" onClick={handleGetStarted} style={{ padding: '0.85rem 1.5rem', borderRadius: '8px', width: 'fit-content' }}>
                     GET STARTED <span className="arrow">→</span>
                   </button>
                 </div>
 
                 <div className="hero-visual-pane">
                   <div className="pc-container">
-                    <div className="quarter-arc" />
-                    <img src="/img/pc.png" alt="Terminal" className="pc-image" />
+                    <img src="/img/pc.png" alt="Terminal" className="pc-image" style={{ filter: 'grayscale(1) contrast(1.1) brightness(0.9)', animation: 'rotate3d 8s ease-in-out infinite' }} />
                   </div>
                 </div>
               </div>
 
               <div className="hero-lower-zone">
-                <div className="feature-row">
+                <div className="feature-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem', width: '100%' }}>
                   {services.map((s, i) => (
-                    <div key={i} className="feature-item card">
-                      <div className="card-scanner" />
-                      <h3 className="feature-title">{s.title}</h3>
-                      <p className="feature-desc">{s.desc}</p>
+                    <div key={i} className="feature-item card" style={{ padding: '1.25rem', borderRadius: '12px', background: 'rgba(10,10,10,0.8)' }}>
+                      <h3 className="feature-title" style={{ fontSize: '0.85rem', color: '#fff', marginBottom: '0.5rem' }}>{s.title}</h3>
+                      <p className="feature-desc" style={{ fontSize: '0.72rem', color: '#888', margin: 0 }}>{s.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -878,18 +903,7 @@ function App() {
             </div>
           </section>
 
-          <footer className="site-footer" style={{ padding: '2rem 4rem', background: '#000', borderTop: '1px solid var(--border)' }}>
-            <div className="footer-content">
-              <div>© 2026 VAULT-TEC INDUSTRIES <span className="dot-sep">•</span> STELLAR MANAGEMENT HUB</div>
-              <div className="tech-stack">
-                <span>SOROBAN</span>
-                <span className="dot-sep">•</span>
-                <span>REACT</span>
-                <span className="dot-sep">•</span>
-                <span>SPLINE 3D</span>
-              </div>
-            </div>
-          </footer>
+          <AppFooter />
         </div>
       </div>
     );
@@ -899,10 +913,9 @@ function App() {
     <div className="app-shell enter">
       <div className="bg-layer">
         <div className="bg-3d">
-          <Spline scene="https://prod.spline.design/To1j6z2qfMCDNQE1/scene.splinecode" />
+          <Spline scene="https://prod.spline.design/hofxv-IBnIcq38B2/scene.splinecode" />
         </div>
-        <div className="bg-gradients" />
-        <div className="bg-vignette" />
+        <div className="bg-vignette" style={{ background: 'radial-gradient(circle at center, transparent 0%, #000 100%)' }} />
       </div>
       
       <div className="app-container">
@@ -918,7 +931,9 @@ function App() {
               <span className="badge badge--net">Testnet</span>
               <span className="badge badge--warn">Restricted</span>
               <div className="notification-wrapper" onClick={() => { setActiveTab('events'); setHasAlerts(false); }} title="VIEW SYSTEM EVENTS">
-                <span className="notification-bell">🔔</span>
+                <span className="notification-bell" style={{ fontSize: '1.2rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </span>
                 {hasAlerts && <div className="notification-dot" />}
               </div>
             </div>
@@ -941,7 +956,7 @@ function App() {
             <div className={`nav-item ${activeTab === 'tracker' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('tracker')}>History</div>
             <div className={`nav-item ${activeTab === 'events' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('events')}>System Events</div>
             {address && adminAddress && address === adminAddress && (
-              <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>⚠ DIAGNOSTICS</div>
+              <div className={`nav-item nav-item--diag ${activeTab === 'diagnostics' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('diagnostics')}>Diagnostics</div>
             )}
           </nav>
 
@@ -961,14 +976,12 @@ function App() {
                 </div>
               )}
 
-              <div className="card" style={{ padding: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Session Control</div>
-                {!address ? (
-                  <button className="btn btn--full" onClick={handleConnect}>Link Operator Wallet</button>
-                ) : (
+              {address && (
+                <div className="card" style={{ padding: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Session Control</div>
                   <button className="btn btn--danger btn--full" onClick={handleDisconnect}>Sever Uplink</button>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="card" style={{ padding: '1rem' }}>
                  <div style={{ fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Quick Protocols</div>
@@ -1002,67 +1015,180 @@ function App() {
           </div>
         </main>
 
-        <footer className="site-footer">
-          <div className="footer-content">
-            <span className="copyright">© 2024 STELLAR NETWORK OPERATIONS. ALL RIGHTS RESERVED.</span>
-            <div className="tech-stack">
-              <span>STELLAR</span>
-              <span className="dot-sep">•</span>
-              <span>SOROBAN</span>
-              <span className="dot-sep">•</span>
-              <span>REACT</span>
-              <span className="dot-sep">•</span>
-              <span>SPLINE 3D</span>
-            </div>
-          </div>
-        </footer>
+        <AppFooter />
       </div>
 
+      {displayPrompt && (
+        <div className="modal-overlay" style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)' }} onClick={() => { if (!isLoginRequired) setShowConnectPrompt(false); }}>
+          <div 
+            className="modal-content prompt-modal-layout" 
+            style={{ 
+              width: 800, 
+              maxWidth: '95%', 
+              padding: 0, 
+              overflow: 'hidden', 
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.4)',
+              background: '#0a0a0a'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* LEFT 40% - IMAGE */}
+            <div className="prompt-modal-left" style={{ background: '#000', position: 'relative', overflow: 'hidden' }}>
+              <img 
+                src="/img/person.jpg" 
+                alt="Professional Profile" 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  filter: 'brightness(0.9) contrast(1.05)'
+                }} 
+              />
+            </div>
+            
+            {/* RIGHT 60% - CONTENT */}
+            <div className="prompt-modal-right" style={{ 
+              position: 'relative', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              justifyContent: 'center',
+              padding: '4rem 3rem',
+              background: '#0a0a0a'
+            }}>
+              {!isLoginRequired && (
+                <button 
+                  onClick={() => setShowConnectPrompt(false)} 
+                  style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', color: '#666', fontSize: '1.2rem', cursor: 'pointer', zIndex: 10, transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.target.style.color = '#fff'}
+                  onMouseLeave={e => e.target.style.color = '#666'}
+                >
+                  ✕
+                </button>
+              )}
+              
+              <div style={{ zIndex: 2 }}>
+                <h2 style={{ 
+                  fontSize: '1.8rem', 
+                  fontFamily: 'Inter, system-ui, sans-serif', 
+                  fontWeight: 600,
+                  marginBottom: '0.75rem', 
+                  color: '#ffffff', 
+                  letterSpacing: '-0.5px'
+                }}>
+                  Sign in to Terminal
+                </h2>
+                
+                <p style={{ 
+                  fontSize: '0.95rem', 
+                  color: '#888', 
+                  lineHeight: 1.6, 
+                  marginBottom: '2.5rem', 
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}>
+                  Welcome back. Please connect your verified Web3 wallet to access your dashboard and continue.
+                </p>
+                
+                <button 
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.85rem 1rem', 
+                    fontSize: '0.95rem', 
+                    fontWeight: 500,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    color: '#000',
+                    background: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={e => { e.target.style.background = '#e0e0e0'; e.target.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.target.style.background = '#fff'; e.target.style.transform = 'translateY(0)'; }}
+                  onClick={() => {
+                    setShowConnectPrompt(false);
+                    setShowWalletModal(true);
+                  }}
+                >
+                  Connect Wallet <span style={{ marginLeft: '4px' }}>→</span>
+                </button>
+                
+                <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#555', textAlign: 'center', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                  Secured by Stellar Network
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showWalletModal && (
-        <div className="modal-overlay" onClick={() => setShowWalletModal(false)}>
+        <div className="modal-overlay" onClick={() => { if (!isLoginRequired) setShowWalletModal(false); }}>
           <div className="modal-content card" onClick={e => e.stopPropagation()}>
             <div className="card-corner-br" />
-            <div className="modal-header">
-              <div className="card-tag" style={{ margin: 0 }}>📡 Select Uplink Protocol</div>
-              <button className="btn btn--ghost" style={{ padding: '0.2rem 0.5rem', minWidth: 'auto' }} onClick={() => setShowWalletModal(false)}>X</button>
+            <div className="modal-header" style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 600, fontSize: '1.2rem', color: '#fff' }}>Select Wallet</div>
+              {!isLoginRequired && (
+                <button 
+                  style={{ background: 'transparent', border: 'none', color: '#666', fontSize: '1.2rem', cursor: 'pointer', transition: 'color 0.2s' }} 
+                  onClick={() => setShowWalletModal(false)}
+                  onMouseEnter={e => e.target.style.color = '#fff'}
+                  onMouseLeave={e => e.target.style.color = '#666'}
+                >
+                  ✕
+                </button>
+              )}
             </div>
-            <div className="modal-body">
-              <div className="wallet-grid">
-                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.FREIGHTER)}>
-                  <div className="wallet-icon">F</div>
-                  <div className="wallet-info">
-                    <div className="wallet-name">Freighter</div>
-                    <div className="wallet-desc">Standard Survivor Terminal Uplink</div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {[
+                  { id: ALLOWED_WALLETS.FREIGHTER, name: 'Freighter', desc: 'Standard Stellar Wallet', url: 'https://freighter.app' },
+                  { id: ALLOWED_WALLETS.ALBEDO, name: 'Albedo', desc: 'Web-based Secure Protocol', url: 'https://albedo.link' },
+                  { id: ALLOWED_WALLETS.XBULL, name: 'xBull', desc: 'Alternative Gateway', url: 'https://xbull.app' },
+                  { id: ALLOWED_WALLETS.RABE, name: 'Rabe', desc: 'Simplified Extension', url: 'https://rabe.app' },
+                  { id: ALLOWED_WALLETS.HANA, name: 'Hana', desc: 'Soroban Optimized', url: 'https://hanawallet.app' }
+                ].map(wallet => (
+                  <div 
+                    key={wallet.id}
+                    onClick={() => connectToSpecificWallet(wallet.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      padding: '1rem',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <img 
+                      src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${wallet.url}&size=64`} 
+                      alt={wallet.name} 
+                      style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#fff' }} 
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.95rem' }}>{wallet.name}</div>
+                      <div style={{ color: '#888', fontSize: '0.8rem', marginTop: '0.2rem' }}>{wallet.desc}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.ALBEDO)}>
-                  <div className="wallet-icon">A</div>
-                  <div className="wallet-info">
-                    <div className="wallet-name">Albedo</div>
-                    <div className="wallet-desc">Web-based secure protocol</div>
-                  </div>
-                </div>
-                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.XBULL)}>
-                  <div className="wallet-icon">B</div>
-                  <div className="wallet-info">
-                    <div className="wallet-name">xBull</div>
-                    <div className="wallet-desc">Alternative hardened terminal</div>
-                  </div>
-                </div>
-                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.RABE)}>
-                  <div className="wallet-icon">R</div>
-                  <div className="wallet-info">
-                    <div className="wallet-name">Rabe</div>
-                    <div className="wallet-desc">Simplified Survivor Uplink</div>
-                  </div>
-                </div>
-                <div className="wallet-option" onClick={() => connectToSpecificWallet(ALLOWED_WALLETS.HANA)}>
-                  <div className="wallet-icon">H</div>
-                  <div className="wallet-info">
-                    <div className="wallet-name">Hana</div>
-                    <div className="wallet-desc">Soroban Optimized Gateway</div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
