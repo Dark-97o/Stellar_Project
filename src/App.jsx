@@ -532,7 +532,7 @@ function App() {
             <div className="card card--tall">
               <div className="card-tag">Payments Gateway</div>
               <div className="card-body">
-                <div className="video-frame" style={{ width: '100%', height: '240px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="preview-frame">
                   <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -569,7 +569,7 @@ function App() {
               <div className="card card--tall">
                 <div className="card-tag">Batch Payments</div>
                 <div className="card-body">
-                <div className="video-frame" style={{ width: '100%', height: '220px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="preview-frame">
                   <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -582,7 +582,7 @@ function App() {
                     {multiRecipients.map((r, i) => {
                       const status = multiStatuses[i];
                       return (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 36px 80px', gap: '0.5rem', alignItems: 'center' }}>
+                        <div key={i} className="multipay-row">
                           <input
                             className="input"
                             placeholder={`Recipient ${i + 1} (G...)`}
@@ -673,7 +673,7 @@ function App() {
               <div className="card">
                 <div className="card-tag">Split Bill Calculator</div>
                 <div className="card-body">
-                <div className="video-frame" style={{ width: '100%', height: '200px', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="preview-frame">
                   <video src="/img/pay.mov" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -821,7 +821,7 @@ function App() {
             <div className="card">
               <div className="card-tag">Soroban Relief Protocol</div>
               <div className="card-body">
-                <div className="video-frame" style={{ width: '100%', height: '260px', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="preview-frame">
                   <video src="/img/poverty.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -1077,10 +1077,10 @@ function App() {
         );
       case 'terminal_logs':
         return (
-          <div className="card card--diag" style={{ height: '70vh' }}>
+          <div className="card card--diag terminal-panel">
             <div className="card-tag">Terminal Diagnostics</div>
-            <div className="card-body">
-              <div className="console" style={{ height: '100%' }}>
+            <div className="card-body console-container">
+              <div className="console">
                 {logs.map((l, i) => (
                   <div key={i} className={`console-line console-line--${l.type}`}>
                     <span className="console-ts">[{l.ts}]</span>{l.msg}
@@ -1205,9 +1205,9 @@ function App() {
           </div>
         </header>
 
-        <main className="survivor-hub" style={{ paddingBottom: '6rem' }}>
-          <div className="nav-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem', pointerEvents: 'auto' }}>
-            <nav className="nav-top-bar" style={{ margin: 0 }}>
+        <main className="survivor-hub">
+          <div className="nav-container">
+            <nav className="nav-top-bar">
               <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('terminal')}>Payments</div>
               <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('multipay')}>Batch Transfer</div>
               <div className={`nav-item ${activeTab === 'calculator' ? 'nav-item--active' : ''}`} onClick={() => setActiveTab('calculator')}>Split Bill</div>
@@ -1218,24 +1218,8 @@ function App() {
               )}
             </nav>
             <div 
-              className={`nav-item ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
+              className={`nav-item shop-nav-btn ${activeTab === 'shop' ? 'nav-item--active' : ''}`} 
               onClick={() => setActiveTab('shop')}
-              style={{ 
-                background: activeTab === 'shop' ? 'var(--success)' : 'rgba(35, 209, 139, 0.05)', 
-                color: activeTab === 'shop' ? 'var(--bg-abyss)' : 'var(--success)',
-                border: '2px solid var(--success)',
-                fontWeight: 800,
-                padding: '0.5rem 1.8rem',
-                borderRadius: '100px',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'shop' ? '0 0 20px rgba(35, 209, 139, 0.6)' : '0 0 10px rgba(35, 209, 139, 0.2)',
-                textTransform: 'uppercase',
-                transition: 'all 0.25s ease',
-                backdropFilter: 'blur(16px)',
-                pointerEvents: 'auto',
-                display: 'flex',
-                alignItems: 'center'
-              }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
                 <circle cx="9" cy="21" r="1"></circle>
@@ -1246,7 +1230,7 @@ function App() {
             </div>
           </div>
 
-          <div className="bento-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
+          <div className="bento-grid">
             {/* ── LEFT COLUMN: Telemetry & Actions ── */}
             <div className="flex-col" style={{ gap: '1rem' }}>
               {address && (
