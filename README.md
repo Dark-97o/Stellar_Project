@@ -303,6 +303,12 @@ The app will be available at **http://localhost:5173**
 
 ## 📸 Screenshots
 
+### Multi-Wallet Gateway
+
+<img width="1076" height="546" alt="Screenshot 2026-04-23 053319" src="https://github.com/user-attachments/assets/9df53590-bf40-4b6f-9677-8d53659a8370" />
+<br>
+<img width="741" height="891" alt="Screenshot 2026-04-23 053336" src="https://github.com/user-attachments/assets/96c53405-5fa3-431d-a61a-a92f9420da06" />
+
 ### Wallet Connected State
 
 <img width="1139" height="764" alt="Screenshot 2026-04-23 053402" src="https://github.com/user-attachments/assets/f9105738-f3bd-48bc-95ed-50f1006c85fc" />
@@ -322,12 +328,41 @@ The app will be available at **http://localhost:5173**
 
 <img width="1323" height="161" alt="Screenshot 2026-04-23 053549" src="https://github.com/user-attachments/assets/61a363e2-153b-472c-b81a-5c979f4c29c4" />
 
+### Batch Transfer
 
-### Multi-Wallet Gateway
+<img width="1473" height="931" alt="image" src="https://github.com/user-attachments/assets/5bdc0e6f-2219-4c39-aecf-19d83164eb2d" />
 
-<img width="1076" height="546" alt="Screenshot 2026-04-23 053319" src="https://github.com/user-attachments/assets/9df53590-bf40-4b6f-9677-8d53659a8370" />
-<br>
-<img width="741" height="891" alt="Screenshot 2026-04-23 053336" src="https://github.com/user-attachments/assets/96c53405-5fa3-431d-a61a-a92f9420da06" />
+### Split Bill
+
+<img width="1740" height="932" alt="image" src="https://github.com/user-attachments/assets/85193b60-f62f-4b0f-8c8e-8ba6c81eacbc" />
+
+### History
+
+<img width="1696" height="939" alt="image" src="https://github.com/user-attachments/assets/ef22916a-b0a2-4471-a5d0-c5d97a00ca26" />
+
+### Notifications
+
+<img width="1640" height="935" alt="image" src="https://github.com/user-attachments/assets/b33afc65-b8ad-42b2-a914-b81aac551a7d" />
+
+### Admin Diagnostics [Only Visible to Admin Account]
+
+<img width="1701" height="939" alt="image" src="https://github.com/user-attachments/assets/9d63361e-d100-40be-9b2d-3c992b01d5cb" />
+
+### NFT shop
+
+<img width="1689" height="952" alt="image" src="https://github.com/user-attachments/assets/f64427f3-6aee-45a3-94f4-d7e7291ec26c" />
+
+### Soroban Based Relief Fund
+
+<img width="1647" height="953" alt="image" src="https://github.com/user-attachments/assets/d25ce511-c0eb-4b32-8f74-1d56a7723950" />
+
+### XLM Leaderboard
+
+<img width="1604" height="947" alt="image" src="https://github.com/user-attachments/assets/d8e33d35-7529-4ad9-9671-f13de604e2b4" />
+
+### Terminal for Logs
+
+<img width="1646" height="922" alt="image" src="https://github.com/user-attachments/assets/1606e9b2-454e-4988-a813-201a8e1f9a30" />
 
 ### Test Cases Passed
 
