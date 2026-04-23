@@ -90,12 +90,11 @@ export const getXlmBalance = async (publicKey) => {
  */
 export const getContractXlmBalance = async (contractId) => {
   try {
-    const server = new StellarSdk.Rpc.Server(RPC_URL);
     const xlmContract = new StellarSdk.Contract(XLM_TOKEN_ID);
     
     const balanceOp = xlmContract.call("balance", StellarSdk.nativeToScVal(contractId, { type: "address" }));
-    const sim = await server.simulateTransaction(
-      new StellarSdk.TransactionBuilder(new StellarSdk.Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0"), { fee: "100", networkPassphrase: StellarSdk.Networks.TESTNET })
+    const sim = await rpcServer.simulateTransaction(
+      new StellarSdk.TransactionBuilder(new StellarSdk.Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0"), { fee: "100", networkPassphrase: NETWORK_PASSPHRASE })
         .addOperation(balanceOp)
         .setTimeout(30)
         .build()
@@ -103,7 +102,8 @@ export const getContractXlmBalance = async (contractId) => {
 
     if (sim.result) {
       const balance = StellarSdk.scValToNative(sim.result.retval);
-      return (Number(balance) / 10000000).toFixed(2); // Convert stroops to XLM
+      // SAC balance for XLM is in stroops (7 decimals)
+      return (Number(balance) / 10000000).toFixed(2);
     }
     return "0.00";
   } catch (e) {
