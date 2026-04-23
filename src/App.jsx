@@ -140,17 +140,7 @@ function App() {
     { id: 16, name: 'AutoMobi 90s', priceUSD: 670, icon: '/img/nft/nft16.jpeg', owner: null, color: '#00c6fb' },
     { id: 17, name: 'Toasty', priceUSD: 420, icon: '/img/nft/nft17.jpeg', owner: null, color: '#4facfe' },
   ]);
-  const [xlmPriceUSD, setXlmPriceUSD] = useState(0.166); // Calibrated to 6 XLM/$1
-
-  useEffect(() => {
-    const updatePrice = async () => {
-      const price = await getXlmPrice();
-      setXlmPriceUSD(price);
-    };
-    updatePrice();
-    const interval = setInterval(updatePrice, 300000); // Sync every 5 mins
-    return () => clearInterval(interval);
-  }, []);
+  const [xlmPriceUSD, setXlmPriceUSD] = useState(0.166667); // $1 = 6 XLM Protocol Standard
 
   const handleBuyNft = async (nftId) => {
     if (!address) return setShowConnectPrompt(true);
@@ -279,6 +269,7 @@ function App() {
   const [multiRecipients, setMultiRecipients] = useState([{ dest: '', amt: '' }]);
   const [multiStatuses, setMultiStatuses] = useState([]);
   const [modalOrigin, setModalOrigin] = useState({ x: 0, y: 0 });
+  const [customDonateAmt, setCustomDonateAmt] = useState('');
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -908,11 +899,25 @@ function App() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                  <button className="btn btn--full" onClick={() => handleDonate(10)} disabled={loading || !address} style={{ padding: '0.6rem' }}>
-                    DONATE 10 XLM
-                  </button>
-                  <button className="btn btn--full" onClick={() => handleDonate(100)} disabled={loading || !address} style={{ padding: '0.6rem' }}>
-                    DONATE 100 XLM
+                  <div style={{ flex: 1, display: 'flex', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <input 
+                      type="number" 
+                      placeholder="AMOUNT (XLM)" 
+                      value={customDonateAmt}
+                      onChange={(e) => setCustomDonateAmt(e.target.value)}
+                      style={{ flex: 1, background: 'none', border: 'none', color: '#fff', padding: '0 1rem', fontSize: '0.8rem' }}
+                    />
+                    <button 
+                      className="btn btn--primary" 
+                      onClick={() => { handleDonate(parseFloat(customDonateAmt)); setCustomDonateAmt(''); }} 
+                      disabled={loading || !address || !customDonateAmt}
+                      style={{ borderRadius: 0, padding: '0.6rem 1rem' }}
+                    >
+                      DONATE
+                    </button>
+                  </div>
+                  <button className="btn btn--ghost" onClick={() => handleDonate(100)} disabled={loading || !address} style={{ padding: '0.6rem 1.5rem' }}>
+                    BOOST 100 XLM
                   </button>
                 </div>
 
@@ -1104,42 +1109,71 @@ function App() {
                   {nfts.map(nft => {
                     const isOwner = nft.owner === address;
                     const isExpanded = selectedNft?.id === nft.id;
+                    const isPurchased = nft.owner && nft.owner !== SHOP_CONTRACT_ID;
 
                     return (
                       <div 
                         key={nft.id} 
                         className={`nft-card ${isExpanded ? 'nft-card--expanded' : ''}`} 
                         onClick={() => setSelectedNft(isExpanded ? null : nft)}
-                        style={{ cursor: 'pointer', transition: 'all 0.3s ease', background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(10,10,10,0.4)' }}
                       >
-                        <div className="nft-card-inner" style={{ padding: '1.25rem' }}>
-                          <img src={nft.icon} alt={nft.name} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '4px', marginBottom: '1rem' }} />
-                          <h4 style={{ color: 'var(--primary)', marginBottom: '0.25rem' }}>{nft.name}</h4>
-                          <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>${nft.priceUSD} <span style={{ color: '#666' }}>({(nft.priceUSD / xlmPriceUSD).toFixed(2)} XLM)</span></div>
+                        <div className="pill pill--id">#{nft.id.toString().padStart(4, '0')}</div>
+                        
+                        <div className="nft-image-wrapper">
+                          <img src={nft.icon} alt={nft.name} />
+                          {/* Token ID Pill - Top Right */}
+                          <div className="pill pill--id">#{nft.id.toString().padStart(4, '0')}</div>
                           
+                          {isPurchased ? (
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div className="pill pill--unavailable" style={{ fontSize: '0.6rem', padding: '4px 10px', fontWeight: 900 }}>NOT AVAILABLE</div>
+                            </div>
+                          ) : (
+                            <div style={{ position: 'absolute', bottom: '10px', left: '10px' }}>
+                              <div className="pill pill--available">AVAILABLE</div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="nft-card-inner">
+                          <div style={{ marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <h4 style={{ color: '#fff', fontSize: '0.85rem', margin: 0, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{nft.name}</h4>
+                            <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.85rem' }}>${nft.priceUSD}</div>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                            <span style={{ color: '#444', fontSize: '0.65rem', fontWeight: 600 }}>SOROBAN_ASSET_L4</span>
+                            <span style={{ color: '#555', fontSize: '0.65rem' }}>{(nft.priceUSD * 6).toFixed(1)} XLM</span>
+                          </div>
+
+                          <div style={{ marginTop: 'auto' }}>
+                            {isPurchased ? (
+                              <div className="pill pill--owner" style={{ width: '100%', fontSize: '0.55rem', padding: '4px', textAlign: 'center', display: 'block' }}>OWNER: {formatAddress(nft.owner, 6, 4)}</div>
+                            ) : (
+                              <button 
+                                className="btn btn--primary" 
+                                style={{ width: '100%', padding: '0.5rem', fontSize: '0.7rem', borderRadius: '4px', fontWeight: 900, letterSpacing: '1px' }}
+                                onClick={(e) => { e.stopPropagation(); handleBuyNft(nft.id); }}
+                              >
+                                BUY ASSET
+                              </button>
+                            )}
+                          </div>
+
                           {isExpanded && (
-                            <div className="nft-details-expanded" style={{ animation: 'fade-in 0.3s ease-out' }}>
-                              <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
-                                SECURE ASSET ID: {nft.id.toString().padStart(4, '0')}<br/>
-                                STATUS: {nft.owner ? (isOwner ? 'AUTHENTICATED' : 'ASSIGNED') : 'AVAILABLE'}
-                              </p>
-                              
-                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {!nft.owner ? (
-                                  <button className="btn btn--primary" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); handleBuyNft(nft.id); }}>BUY NFT</button>
-                                ) : isOwner ? (
-                                  <button className="btn btn--ghost" style={{ flex: 1, color: '#ff4b2b' }} onClick={(e) => { e.stopPropagation(); handleSellNft(nft.id); }}>SELL BACK</button>
-                                ) : null}
-                                
-                                {address === adminAddress && (
-                                  <button className="btn btn--ghost" style={{ fontSize: '0.7rem' }} onClick={(e) => { e.stopPropagation(); handleAdminFreeNft(nft.id); }}>ADMIN_RESET</button>
-                                )}
+                            <div className="nft-details-expanded" style={{ animation: 'fade-in 0.3s ease-out', marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '0.8rem', fontFamily: 'monospace' }}>
+                                UID: {nft.id.toString().padStart(8, '0')}<br/>
+                                HASH: {NFT_CONTRACT_ID.substring(0, 14)}...
                               </div>
-                              
-                              {nft.owner && (
-                                <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--primary)', opacity: 0.8 }}>
-                                  OWNER: {formatAddress(nft.owner, 8, 4)}
-                                </div>
+                              {isOwner && (
+                                <button 
+                                  className="btn btn--ghost" 
+                                  style={{ width: '100%', color: '#ff4b2b', fontSize: '0.65rem', border: '1px solid rgba(255,75,43,0.2)', padding: '0.4rem' }} 
+                                  onClick={(e) => { e.stopPropagation(); handleSellNft(nft.id); }}
+                                >
+                                  LIQUIDATE ASSET
+                                </button>
                               )}
                             </div>
                           )}
