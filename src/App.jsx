@@ -22,6 +22,7 @@ import {
   invokeContractSetGoal,
   fetchNftOwner,
   fetchNftMetadata,
+  NFT_CONTRACT_ID,
   SHOP_CONTRACT_ID,
   ErrorTypes
 } from './utils/stellar';
@@ -270,6 +271,9 @@ function App() {
   const [multiStatuses, setMultiStatuses] = useState([]);
   const [modalOrigin, setModalOrigin] = useState({ x: 0, y: 0 });
   const [customDonateAmt, setCustomDonateAmt] = useState('');
+  const [calcTotal, setCalcTotal] = useState('');
+  const [calcN, setCalcN] = useState('2');
+  const [splitLink, setSplitLink] = useState('');
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -523,12 +527,18 @@ function App() {
   const applySplit = () => {
     const total = parseFloat(calcTotal);
     const n = parseInt(calcN);
-    if (!total || !n) return;
-    const splitAmt = (total / n).toFixed(7);
-    const newRecipients = Array.from({ length: n }, () => ({ dest: '', amt: splitAmt }));
-    setMultiRecipients(newRecipients);
-    log(`CALCULATED SPLIT: ${splitAmt} XLM x ${n}`, "info");
+    if (!total || !n || !address) {
+      if (!address) log("UPLINK REQUIRED TO GENERATE REQUEST LINK.", "err");
+      return;
+    }
+    const splitAmt = (total / n).toFixed(2);
+    // Generate Stellar SEP-0007 Payment Link
+    const link = `web+stellar:pay?destination=${address}&amount=${splitAmt}&memo=SplitBill_${Date.now().toString().slice(-4)}`;
+    setSplitLink(link);
+    log(`REQUEST GENERATED: ${splitAmt} XLM per person.`, "ok");
   };
+
+
 
   const renderContent = () => {
     switch (activeTab) {
@@ -705,8 +715,7 @@ function App() {
                     playsInline
                     style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
                   >
-                    <source src="/img/payment.mov" type="video/quicktime" />
-                    <source src="/img/poverty.mp4" type="video/mp4" />
+                    <source src="/img/payment.mp4" type="video/mp4" />
                   </video>
                   <div style={{ position: 'absolute', bottom: '15px', right: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="dot dot--on" style={{ width: '6px', height: '6px' }} />
@@ -719,31 +728,59 @@ function App() {
                     <input className="input" type="number" value={calcTotal} onChange={e => setCalcTotal(e.target.value)} placeholder="0.00" />
                   </div>
                   <div className="input-group">
-                    <label className="field-label">Number of Survivors (N)</label>
+                    <label className="field-label">Number of People (N)</label>
                     <input className="input" type="number" value={calcN} onChange={e => setCalcN(e.target.value)} placeholder="2" />
                   </div>
                 </div>
-                <button className="btn btn--full" onClick={applySplit} style={{ marginBottom: '2rem' }}>
-                  CALCULATE & GENERATE BATCH
+                <button className="btn btn--full" onClick={applySplit} style={{ marginBottom: '1.5rem' }}>
+                  GENERATE PAYMENT REQUEST
                 </button>
 
-                <div className="sep" />
-                <p className="field-label">Batch Recipients</p>
-                <form onSubmit={handleSplitPay}>
-                  {multiRecipients.map((r, i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <input className="input" placeholder="GA..." value={r.dest} onChange={e => {
-                        const newR = [...multiRecipients];
-                        newR[i].dest = e.target.value;
-                        setMultiRecipients(newR);
-                      }} required />
-                      <input className="input" value={r.amt} readOnly />
+                {splitLink && (
+                  <div className="tx-result" style={{ animation: 'fade-in 0.4s ease-out' }}>
+                    <div className="sep" />
+                    <p className="field-label" style={{ textAlign: 'center', marginBottom: '1rem' }}>Instant Payment Request (SEP-0007)</p>
+                    
+                    {/* QR Code Integration */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                      <div style={{ padding: '12px', background: '#fff', borderRadius: '8px', boxShadow: '0 0 20px rgba(79, 172, 254, 0.2)' }}>
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(splitLink)}`} 
+                          alt="Payment QR" 
+                          style={{ display: 'block', width: '160px', height: '160px' }}
+                        />
+                      </div>
                     </div>
-                  ))}
-                  <button className="btn btn--full" type="submit" disabled={loading || !address || multiRecipients.some(r => !r.dest)}>
-                    {loading ? <span className="spinner" /> : 'EXECUTE BATCH UPLINK'}
-                  </button>
-                </form>
+
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '1rem' }}>
+                      <code style={{ fontSize: '0.6rem', color: 'var(--primary)', wordBreak: 'break-all', display: 'block', marginBottom: '0.8rem', textAlign: 'center' }}>
+                        {splitLink}
+                      </code>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn btn--ghost" 
+                          style={{ flex: 1, fontSize: '0.7rem' }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(splitLink);
+                            log("PAYMENT URI COPIED.", "ok");
+                          }}
+                        >
+                          COPY URI
+                        </button>
+                        <button 
+                          className="btn btn--primary" 
+                          style={{ flex: 1, fontSize: '0.7rem' }}
+                          onClick={() => window.open(splitLink, '_blank')}
+                        >
+                          OPEN WALLET
+                        </button>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.6rem', color: '#888', textAlign: 'center', lineHeight: 1.5 }}>
+                      <span style={{ color: 'var(--primary)' }}>⚡ MOBILE READY:</span> Scan the QR with LOBSTR, xBull, or any Stellar wallet to pay your share of {(parseFloat(calcTotal)/parseInt(calcN)).toFixed(2)} XLM.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
