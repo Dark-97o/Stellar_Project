@@ -52,6 +52,23 @@ The Hub employs a three-tier strategy to ensure the Network Leaderboard is never
 - **Tier 1 (Analytical)**: Real-time rich-list data from StellarExpert APIs.
 - **Tier 2 (Discovery)**: A live "Discovery Engine" that scans the latest 50-100 ledger operations to identify active high-volume accounts and audits their balances directly via Horizon.
 - **Tier 3 (Fail-safe)**: A hardcoded registry of verified high-balance accounts used as a mission-critical last resort.
+- **Workflow Architecture**:
+  ```mermaid
+  graph TD
+      A[Telemetry Trigger] --> B{Cache Valid?}
+      B -- Yes --> C[Render from sessionStorage]
+      B -- No --> D[Tier 1: StellarExpert API]
+      D --> E{Success?}
+      E -- No --> F[Tier 2: Discovery Engine]
+      F --> G[Scan Ledger Ops]
+      G --> H[Audit Balances via Horizon]
+      H --> I{Results?}
+      I -- No --> J[Tier 3: Registry Fail-safe]
+      E -- Yes --> K[Merge & Cache]
+      I -- Yes --> K
+      J --> K
+      K --> L[Update UI Context]
+  ```
 
 #### 2. Soroban Smart Contract Integration & Security Testing
 The **DONATE** module interfaces directly with a WASM-based smart contract on the Soroban testnet. It handles:
@@ -69,6 +86,21 @@ The **Stellar Relief Fund** is a non-custodial protocol that allows users to poo
 - **Contribution Pipeline**: User -> `TranscendenceContract.donate()` -> Soroban Auth -> Native XLM Transfer (via SAC) -> Global State Update.
 - **Withdrawal Governance**: Admin -> `TranscendenceContract.withdraw()` -> Verification -> Treasury Liquidation to target recipient.
 - **Event Streaming**: The contract publishes `DonationEvent` and `WithdrawalEvent` payloads, which the frontend captures via the `getEvents` RPC to update the live donor list.
+- **Workflow Architecture**:
+  ```mermaid
+  sequenceDiagram
+      participant U as Survivor (User)
+      participant K as Wallet Kit
+      participant S as Soroban RPC
+      participant C as Relief Contract
+      U->>K: Sign Donate(XLM)
+      K->>S: Broadcast Transaction
+      S->>C: invoke_host_function
+      C->>C: Update Global State
+      C-->>S: emit_event(Donation)
+      S-->>U: Transaction Finalized
+      Note over U,C: Live Telemetry Updated
+  ```
 
 #### 4. Leaderboard Syncing (The Hunters Protocol)
 To ensure high-fidelity network data without exceeding RPC rate limits, the Hub uses a specialized **Hunters Protocol**:
@@ -105,6 +137,21 @@ The Hub has transitioned to a multi-contract ecosystem using **Inter-Contract Ca
 Advanced administrative controls allow for full lifecycle management of the ecosystem:
 - **Asset Release Protocol**: A specialized function allowing admins to reset or "free" NFTs that have been sold back to the shop, restocking the inventory.
 - **Earnings Withdrawal**: Admins can securely take out accumulated XLM earnings (marketplace fees) from the `NFTShop` contract directly via the authorized Diagnostics Panel.
+- **Workflow Architecture**:
+  ```mermaid
+  graph TD
+      A[Connected Wallet] --> B{Is Admin Address?}
+      B -- No --> C[Hide Diagnostics]
+      B -- Yes --> D[Decrypt Diagnostics Tab]
+      D --> E[Security Test Selection]
+      E --> F[Malicious Init / Pause / Withdraw]
+      F --> G[Build Payload]
+      G --> H[Freighter Sign]
+      H --> I[Soroban Execution]
+      I --> J{Wasm Trap / Revert?}
+      J -- Yes --> K[UI: PROVEN SECURE]
+      J -- No --> L[UI: PROTOCOL ERROR]
+  ```
 
 #### 8. SEP-0007 "Request-to-Pay" Architecture
 The Hub has transitioned from simple payouts to a professional **Payment Request Engine** based on the Stellar SEP-0007 standard.
@@ -132,9 +179,20 @@ The entire interface has been redesigned for accessibility on all device tiers:
 ### 1. Multi-Wallet Gateway & Authentication Flow
 **Feature:** Secure, dynamic connectivity to the Stellar Testnet using various web3 wallet providers.
 **Data Flow:** 
-- The user initiates the uplink. `StellarWalletsKit` intercepts the request and scans the browser environment for supported extensions (Freighter, Rabe, Hana).
-- Once selected, the Kit securely requests the `publicKey` from the extension.
 - **State Injection:** The App captures the address, updates the global React context, and instantly triggers the `syncAllData` pipeline, dropping the dystopian UI into its "Authorized" layout.
+- **Workflow Architecture**:
+  ```mermaid
+  graph LR
+      A[Operator Click] --> B{Wallets Kit}
+      B --> C[Freighter]
+      B --> D[xBull]
+      B --> E[Hana / Rabe]
+      C & D & E --> F[Secure Handshake]
+      F --> G[Extract PublicKey]
+      G --> H[Update App Context]
+      H --> I[Sync Horizon Data]
+      I --> J[Terminal Online]
+  ```
 
 ### 2. High-Performance Caching & Dashboard Telemetry
 **Feature:** Real-time data streaming (Balances, Network Leaderboards, Payment History) without encountering Horizon RPC rate-limits.
@@ -143,6 +201,17 @@ The entire interface has been redesigned for accessibility on all device tiers:
 - **Whale Hunters (Network Leaderboard):** The app queries the latest ledger, extracts the top 50 active operations, filters the public keys, and queries Horizon for their XLM balances. This incredibly heavy calculation is immediately cached for 60 minutes.
 - **Account History:** Past payments are parsed from Horizon's `/operations` endpoint, decoded, and cached for 30 seconds.
 - **UX Flow:** During fetch cycles, a sleek `.skeleton-pulse` glass-morphic layout renders over the modules, guaranteeing zero layout shift while the background promises resolve.
+- **Workflow Architecture**:
+  ```mermaid
+  graph TD
+      A[Request Trigger] --> B{Check SessionStorage}
+      B -- Valid TTL --> C[Instant UI Render]
+      B -- Expired/Null --> D[Horizon/RPC Fetch]
+      D --> E[Parse & Format Data]
+      E --> F[Update Storage & TTL]
+      F --> G[Smooth UI Transition]
+      G --> H[Authorized State]
+  ```
 
 ### 3. Advanced Batch Processing (MULTI-PAY)
 **Feature:** The ability to execute multiple Stellar XLM transactions simultaneously to different recipients in a single unified Ledger operation.
@@ -151,6 +220,19 @@ The entire interface has been redesigned for accessibility on all device tiers:
 - The `stellar.js` engine parses the script line-by-line, validating Stellar address checksums and formatting the amounts.
 - A single `TransactionBuilder` is instantiated. Instead of one operation, the engine loops through the parsed array and chains multiple `Operation.payment()` calls into the exact same XDR payload.
 - The wallet signs once. If successful, the UI maps the individual results into a sleek, real-time progress bar tracking the batch status.
+- **Workflow Architecture**:
+  ```mermaid
+  graph TD
+      A[Script Entry] --> B[Parser Engine]
+      B --> C[Address Validation]
+      C --> D[Amount Formatting]
+      D --> E[Transaction Builder]
+      E --> F[Chain Ops 1...N]
+      F --> G[Wallet Signature]
+      G --> H[Ledger Broadcast]
+      H --> I[Progress Mapping]
+      I --> J[Batch Finalized]
+  ```
 
 ### 4. NFT Shop: Professional Card Architecture
 **Feature:** A high-fidelity, information-dense NFT trading interface optimized for professional asset managers.
