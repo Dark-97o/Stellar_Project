@@ -4,7 +4,7 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 
 # Live Demo Link: [Click Here](https://stellar-network-pgt.vercel.app/)
 
-<img width="1863" height="952" alt="image" src="https://github.com/user-attachments/assets/d13c621a-d1f8-46cc-a441-93cf258678b1" />
+<img width="1853" height="926" alt="Screenshot 2026-04-23 053232" src="https://github.com/user-attachments/assets/adb62079-26d5-46da-bbc7-b42955e9e07f" />
 
 ---
 
@@ -184,23 +184,29 @@ The app will be available at **http://localhost:5173**
 
 ### Wallet Connected State
 
-<img width="565" height="113" alt="Screenshot 2026-04-21 100301" src="https://github.com/user-attachments/assets/fb88409e-f79c-4acc-bfc5-d1fe9705492e" />
+<img width="1139" height="764" alt="Screenshot 2026-04-23 053402" src="https://github.com/user-attachments/assets/f9105738-f3bd-48bc-95ed-50f1006c85fc" />
+
 
 ### Balance Displayed
 
-<img width="546" height="582" alt="image" src="https://github.com/user-attachments/assets/a6dcabe5-0e62-4a12-91e8-6eca2cae6f57" />
+<img width="444" height="417" alt="Screenshot 2026-04-23 053416" src="https://github.com/user-attachments/assets/06672069-c5d0-4c0b-9e8d-628609f0ef70" />
+
 
 ### Successful Testnet Transaction
 
-<img width="1791" height="944" alt="image" src="https://github.com/user-attachments/assets/65e13602-7263-405e-aacc-7e3840ebe495" />
+<img width="1822" height="909" alt="Screenshot 2026-04-23 053511" src="https://github.com/user-attachments/assets/4b956ff4-cca5-48a3-933a-3f6e633d67d3" />
+
 
 ### Transaction Result
 
-<img width="789" height="392" alt="image" src="https://github.com/user-attachments/assets/555d4525-ffa1-426c-884f-d4e869ab2efb" />
+<img width="1323" height="161" alt="Screenshot 2026-04-23 053549" src="https://github.com/user-attachments/assets/61a363e2-153b-472c-b81a-5c979f4c29c4" />
+
 
 ### Multi-Wallet Gateway
 
-<img width="568" height="638" alt="image" src="https://github.com/user-attachments/assets/b5ab111c-1f87-4d72-a376-876a15900c36" />
+<img width="1076" height="546" alt="Screenshot 2026-04-23 053319" src="https://github.com/user-attachments/assets/9df53590-bf40-4b6f-9677-8d53659a8370" />
+<br>
+<img width="741" height="891" alt="Screenshot 2026-04-23 053336" src="https://github.com/user-attachments/assets/96c53405-5fa3-431d-a61a-a92f9420da06" />
 
 ### Test Cases Passed
 
@@ -209,6 +215,14 @@ The app will be available at **http://localhost:5173**
 ### Demo Video
 
 https://github.com/user-attachments/assets/0df2d724-17d5-4614-9918-5c0a46ce9572
+
+### CI/CD Pipelines Deployed
+<img width="1847" height="953" alt="Screenshot 2026-04-23 050737" src="https://github.com/user-attachments/assets/670502c7-6e78-4fac-986b-a5683eccdebd" />
+
+
+### Mobile Responsive View - Small Screens
+
+<img width="603" height="921" alt="Screenshot 2026-04-23 050115" src="https://github.com/user-attachments/assets/38d3bdef-68e6-4284-8be6-ff7a2677075c" />
 
 ### Deployment Environment
 
