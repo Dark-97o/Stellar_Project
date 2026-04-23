@@ -1103,51 +1103,46 @@ function App() {
                 <div className="shop-grid">
                   {nfts.map(nft => {
                     const isOwner = nft.owner === address;
+                    const isExpanded = selectedNft?.id === nft.id;
 
                     return (
                       <div 
                         key={nft.id} 
-                        className="nft-card" 
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const startX = rect.left + rect.width / 2 - window.innerWidth / 2;
-                          const startY = rect.top + rect.height / 2 - window.innerHeight / 2;
-                          setModalOrigin({ x: startX, y: startY });
-                          setSelectedNft(nft);
-                        }} 
-                        style={{ cursor: 'pointer' }}
+                        className={`nft-card ${isExpanded ? 'nft-card--expanded' : ''}`} 
+                        onClick={() => setSelectedNft(isExpanded ? null : nft)}
+                        style={{ cursor: 'pointer', transition: 'all 0.3s ease', background: isExpanded ? 'rgba(255,255,255,0.05)' : 'rgba(10,10,10,0.4)' }}
                       >
-                        <div className="nft-image-container" style={{ background: `radial-gradient(circle at center, ${nft.color}22 0%, #000 100%)` }}>
-                          <img 
-                            src={nft.icon} 
-                            alt={nft.name} 
-                            style={{ 
-                              width: '100%', 
-                              height: '100%', 
-                              objectFit: 'cover', 
-                              filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.2))',
-                              transition: 'transform 0.3s'
-                            }} 
-                            onMouseEnter={e => e.target.style.transform = 'scale(1.1)'}
-                            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
-                          />
-                          {nft.owner && (
-                            <div style={{
-                              position: 'absolute', top: '10px', left: '10px',
-                              background: 'rgba(0,0,0,0.7)', padding: '3px 10px',
-                              borderRadius: '100px', fontSize: '0.6rem',
-                              border: '1px solid rgba(255,255,255,0.2)', color: '#fff'
-                            }}>
-                              {isOwner ? "YOU OWN THIS" : `HELD BY ${formatAddress(nft.owner, 4, 3)}`}
+                        <div className="nft-card-inner" style={{ padding: '1.25rem' }}>
+                          <img src={nft.icon} alt={nft.name} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '4px', marginBottom: '1rem' }} />
+                          <h4 style={{ color: 'var(--primary)', marginBottom: '0.25rem' }}>{nft.name}</h4>
+                          <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>${nft.priceUSD} <span style={{ color: '#666' }}>({(nft.priceUSD / xlmPriceUSD).toFixed(2)} XLM)</span></div>
+                          
+                          {isExpanded && (
+                            <div className="nft-details-expanded" style={{ animation: 'fade-in 0.3s ease-out' }}>
+                              <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>
+                                SECURE ASSET ID: {nft.id.toString().padStart(4, '0')}<br/>
+                                STATUS: {nft.owner ? (isOwner ? 'AUTHENTICATED' : 'ASSIGNED') : 'AVAILABLE'}
+                              </p>
+                              
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {!nft.owner ? (
+                                  <button className="btn btn--primary" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); handleBuyNft(nft.id); }}>BUY NFT</button>
+                                ) : isOwner ? (
+                                  <button className="btn btn--ghost" style={{ flex: 1, color: '#ff4b2b' }} onClick={(e) => { e.stopPropagation(); handleSellNft(nft.id); }}>SELL BACK</button>
+                                ) : null}
+                                
+                                {address === adminAddress && (
+                                  <button className="btn btn--ghost" style={{ fontSize: '0.7rem' }} onClick={(e) => { e.stopPropagation(); handleAdminFreeNft(nft.id); }}>ADMIN_RESET</button>
+                                )}
+                              </div>
+                              
+                              {nft.owner && (
+                                <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--primary)', opacity: 0.8 }}>
+                                  OWNER: {formatAddress(nft.owner, 8, 4)}
+                                </div>
+                              )}
                             </div>
                           )}
-                          <div className="nft-badge" style={{ background: 'var(--primary)', color: '#000', fontWeight: 800 }}>TKN-{nft.id.toString().padStart(4, '0')}</div>
-                        </div>
-                        <div style={{ padding: '1.25rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 600, color: '#fff' }}>{nft.name}</span>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>${nft.priceUSD}</span>
-                          </div>
                         </div>
                       </div>
                     );
@@ -1575,103 +1570,7 @@ function App() {
           </div>
         </div>
       )}
-      {selectedNft && (
-        <div className="modal-overlay" onClick={() => setSelectedNft(null)}>
-          <div
-            className="modal-content card"
-            style={{ 
-              width: '95%', 
-              maxWidth: '700px', 
-              padding: 0, 
-              overflow: 'hidden', 
-              maxHeight: '90vh', 
-              display: 'flex', 
-              flexDirection: 'column',
-              '--start-x': `${modalOrigin.x}px`,
-              '--start-y': `${modalOrigin.y}px`,
-              animation: 'pop-from-card 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{
-                height: '300px',
-                background: `radial-gradient(circle at center, ${selectedNft.color}33 0%, #000 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative'
-              }}>
-                <img 
-                  src={selectedNft.icon} 
-                  alt={selectedNft.name} 
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    objectFit: 'cover',
-                    filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3))'
-                  }} 
-                />
-                <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
-                  <button onClick={() => setSelectedNft(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%' }}>✕</button>
-                </div>
-                <div style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem' }}>
-                  <div style={{ background: 'var(--primary)', color: '#000', padding: '4px 12px', borderRadius: '4px', fontWeight: 800, fontSize: '0.8rem' }}>TKN-{selectedNft.id.toString().padStart(4, '0')}</div>
-                </div>
-                {selectedNft.owner && (
-                  <div style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', background: 'rgba(0,0,0,0.7)', padding: '6px 12px', borderRadius: '100px', fontSize: '0.7rem', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                    CURRENT OWNER: {formatAddress(selectedNft.owner)}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ padding: '2rem', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                  <div>
-                    <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>{selectedNft.name}</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Strategic Digital Asset • Soroban Token Standard</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary)' }}>{selectedNft.priceUSD * 6} XLM</div>
-                    <div style={{ fontSize: '0.85rem', color: '#555' }}>VALUATION: ${selectedNft.priceUSD} USD</div>
-                  </div>
-                </div>
-
-                <div className="sep" style={{ margin: '1.5rem 0' }} />
-
-                <div style={{ marginBottom: '2rem' }}>
-                  <p className="field-label" style={{ marginBottom: '0.75rem' }}>Ownership History</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ color: '#fff' }}>GENESIS MINT</span>
-                      <span style={{ color: 'var(--text-muted)' }}>{formatAddress(SHOP_CONTRACT_ID)}</span>
-                    </div>
-                    {selectedNft.owner && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--primary-faint)' }}>
-                        <span style={{ color: 'var(--primary)' }}>CURRENT HOLDER</span>
-                        <span style={{ color: '#fff' }}>{formatAddress(selectedNft.owner)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  {selectedNft.owner === address ? (
-                    <button className="btn btn--danger btn--full" onClick={() => { handleSellNft(selectedNft.id); setSelectedNft(null); }} disabled={loading}>LIQUIDATE ASSET (SELL)</button>
-                  ) : selectedNft.owner && selectedNft.owner !== address ? (
-                    <button className="btn btn--full" style={{ opacity: 0.3, cursor: 'not-allowed' }} disabled>PRIVATE ASSET</button>
-                  ) : (
-                    <button className="btn btn--full" style={{ background: '#fff', color: '#000', fontWeight: 700 }} onClick={() => { handleBuyNft(selectedNft.id); setSelectedNft(null); }} disabled={loading}>
-                      {loading ? <span className="spinner" /> : 'CONFIRM ACQUISITION'}
-                    </button>
-                  )}
-                  <button className="btn btn--ghost" onClick={() => setSelectedNft(null)}>CANCEL</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* NFT Expansion handled within the grid */}
     </div>
   );
 }

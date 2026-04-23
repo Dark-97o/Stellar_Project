@@ -93,14 +93,16 @@ export const getContractXlmBalance = async (contractId) => {
     const xlmContract = new StellarSdk.Contract(XLM_TOKEN_ID);
     
     const balanceOp = xlmContract.call("balance", StellarSdk.nativeToScVal(contractId, { type: "address" }));
+    // Using a verified high-balance account for stable simulation
+    const simAccount = "GBFAIH5WKAJQ77NG6BZG7TGVGXHPX4SQLIJ7BENJMCVCZSUZPSISCLU5";
     const sim = await rpcServer.simulateTransaction(
-      new StellarSdk.TransactionBuilder(new StellarSdk.Account("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", "0"), { fee: "100", networkPassphrase: NETWORK_PASSPHRASE })
+      new StellarSdk.TransactionBuilder(new StellarSdk.Account(simAccount, "0"), { fee: "100", networkPassphrase: NETWORK_PASSPHRASE })
         .addOperation(balanceOp)
         .setTimeout(30)
         .build()
     );
 
-    if (sim.result) {
+    if (sim.result?.retval) {
       const balance = StellarSdk.scValToNative(sim.result.retval);
       // SAC balance for XLM is in stroops (7 decimals)
       return (Number(balance) / 10000000).toFixed(2);

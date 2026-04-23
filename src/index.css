@@ -297,9 +297,9 @@ body::before {
 
 .shop-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
-  padding: 1rem 0;
+  padding-bottom: 60vh; /* Massive padding to allow bottom cards to scroll to top */
 }
 
 .nft-card {
