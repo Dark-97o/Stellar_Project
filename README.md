@@ -60,6 +60,40 @@ The **DONATE** module interfaces directly with a WASM-based smart contract on th
    - Prove Unauthorized `withdraw` functions trap the Wasm VM and reject theft.
    - Prove the Contract can be decentralized mapped to a new Admin safely.
 
+#### 3. Enterprise CI/CD Pipeline (Automation)
+The project is integrated with a professional **GitHub Actions** pipeline (`main.yml`) that ensures code quality and deployment stability:
+- **Continuous Integration**: Automatically builds the React/Vite frontend on every push to `main`.
+- **Automated Testing**: Executes the contract test suite to verify protocol integrity before any code is merged.
+- **Environment Parity**: Ensures the production environment matches development builds by standardizing the Node.js environment.
+
+#### 4. Modular NFT Marketplace Architecture (Level 4 Upgrade)
+The Hub has transitioned to a multi-contract ecosystem using **Inter-Contract Calls (ICC)** to separate asset ownership from marketplace logic.
+- **`StellarNFT` (Asset)**: A standalone contract managing NFT minting, ownership, and metadata.
+- **`NFTShop` (Marketplace)**: Handles USD pricing logic, XLM-to-Stroop conversions, and contract-to-contract communication.
+- **Workflow Architecture**:
+  ```mermaid
+  sequenceDiagram
+      participant U as User
+      participant S as NFTShop
+      participant N as StellarNFT
+      U->>S: buy_nft(id, price_usd)
+      S->>S: Calculate XLM cost via Oracle
+      S->>U: Request XLM Transfer
+      S->>N: ICC: mint(user, id, metadata)
+      N-->>S: Confirmation
+      S-->>U: Success Notification
+  ```
+
+#### 5. Admin Governance: NFTG & Treasury Management
+Advanced administrative controls allow for full lifecycle management of the ecosystem:
+- **NFTG (NFT Release Protocol)**: A specialized "Asset Release" function allowing admins to reset or "free" NFTs that have been sold back to the shop, restocking the inventory.
+- **Earnings Withdrawal**: Admins can securely take out accumulated XLM earnings (marketplace fees) from the `NFTShop` contract directly via the authorized Diagnostics Panel.
+
+#### 6. Mobile-First Responsive Overhaul
+The entire interface has been redesigned for accessibility on all device tiers:
+- **Compact Navigation**: A sleek, tactical hamburger menu for mobile users.
+- **Responsive Bento Grid**: Adaptive layout logic that reflows the Telemetry cards and Transaction history into a vertical stack on smaller screens while maintaining 100% density.
+
 ---
 
 ## 🌊 Feature Deep-Dive & Data Flows
