@@ -25,9 +25,10 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 - **🏦 Multi-Wallet Gateway** — Unified uplink supporting Freighter, Rabe, Hana, xBull, and Albedo
 - **⚡ Soroban Relief Protocol** — Direct smart contract interaction for decentralized relief funding
 - **🔔 Tactical Notifications** — Real-time red-dot alert system for critical system events
-- **🏪 On-Chain NFT Marketplace** — A decentralized bazaar for trading strategic assets with simulated USD-to-XLM conversion rates (Level 4).
-- **🛠️ Automated CI/CD** — Production-grade build and test pipelines using GitHub Actions.
-- **📱 Mobile-First Interface** — A completely redesigned, responsive terminal experience with a compact hamburger menu for small screens.
+- **🏪 NFT Shop** — A premium decentralized marketplace featuring high-density "Glassmorphism" cards, professional hover interactions, and direct on-chain liquidity (Buy/Sell).
+- **📉 Standardized Protocol Valuations** — All marketplace assets are calibrated to a fixed protocol rate of $1 = 6 XLM for institutional-grade stability.
+- **📱 SEP-0007 Split Bill Engine** — A professional "Request-to-Pay" utility that generates shareable Stellar URIs and live QR codes for instant communal debt settlement.
+- **📱 Mobile-First Responsive Overhaul** — A completely redesigned, responsive terminal experience with a compact hamburger menu for small screens.
 - **🛡️ Error Boundary** — Graceful crash recovery with themed error screen
 
 ---
@@ -105,7 +106,21 @@ Advanced administrative controls allow for full lifecycle management of the ecos
 - **Asset Release Protocol**: A specialized function allowing admins to reset or "free" NFTs that have been sold back to the shop, restocking the inventory.
 - **Earnings Withdrawal**: Admins can securely take out accumulated XLM earnings (marketplace fees) from the `NFTShop` contract directly via the authorized Diagnostics Panel.
 
-#### 8. Mobile-First Responsive Overhaul
+#### 8. SEP-0007 "Request-to-Pay" Architecture
+The Hub has transitioned from simple payouts to a professional **Payment Request Engine** based on the Stellar SEP-0007 standard.
+- **URI Generation**: Dynamically constructs `web+stellar:pay` URIs with hardcoded destinations, amounts, and metadata.
+- **QR Uplink**: Integrated a real-time QR generation pipeline allowing mobile-first payment settlement.
+- **Architecture Flow**:
+  ```mermaid
+  graph LR
+      A[Operator Input] --> B(Precision Split Logic)
+      B --> C{SEP-0007 Engine}
+      C --> D[Shareable URI]
+      C --> E[Dynamic QR Code]
+      E --> F((Mobile Wallet Scan))
+  ```
+
+#### 9. Mobile-First Responsive Overhaul
 The entire interface has been redesigned for accessibility on all device tiers:
 - **Compact Navigation**: A sleek, tactical hamburger menu for mobile users.
 - **Responsive Bento Grid**: Adaptive layout logic that reflows the Telemetry cards and Transaction history into a vertical stack on smaller screens.
@@ -137,13 +152,21 @@ The entire interface has been redesigned for accessibility on all device tiers:
 - A single `TransactionBuilder` is instantiated. Instead of one operation, the engine loops through the parsed array and chains multiple `Operation.payment()` calls into the exact same XDR payload.
 - The wallet signs once. If successful, the UI maps the individual results into a sleek, real-time progress bar tracking the batch status.
 
-### 4. Soroban Smart Contract & Diagnostics UI
-**Feature:** A robust Web3 interface mapping directly to a live, Rust-based WASM smart contract (`TranscendenceContract`) deployed on the Soroban Testnet.
+### 4. NFT Shop: Professional Card Architecture
+**Feature:** A high-fidelity, information-dense NFT trading interface optimized for professional asset managers.
 **Data Flow:**
-- **Pool Querying:** The dashboard polls the contract's `get_stats` to render the Global Pool balance and goal. It also queries `getEvents` to list the newest 5 donors chronologically.
-- **Contributions (Donate):** The UI builds an `Operation.invokeHostFunction` to call the `donate` function. It calculates footprint bounds dynamically and passes the XLM transfer.
-- **Admin Diagnostics Panel:** When the UI detects that the connected wallet address mathematically equals the Contract's `Admin` address, it decrypts a hidden `⚠ DIAGNOSTICS` tab.
-- **Security Testing Flow:** The Admin can trigger hostile operations (e.g., Malicious Double-Init, Unauthorized Withdraw, Protocol Pause). The UI dispatches the payloads to Soroban. The Rust contract successfully identifies the illegal behavior, executes a Wasm Trap (`panic!`), and the network rejects the uplink—which the UI beautifully renders as `MALICIOUS INIT REJECTED`, visually proving the security of the fund.
+- **Full-Bleed Imagery:** Optimized at 220px height with `object-fit: cover` for cinematic impact.
+- **Status Mapping:** Availability pills (Opaque Green/Red) and Token IDs are overlapped directly onto the artwork using `absolute` positioning, saving ~80px of vertical waste per card.
+- **Interactive Tints:** Cards utilize `backdrop-filter: blur(4px)` and `rgba(35, 209, 139, 0.65)` glass-morphism effects for a "tactile" digital feel.
+- **Liquidity Engine:** One-click "ACQUIRE" for available assets and integrated "LIQUIDATE" for owners, interacting directly with the `NFTShop` ICC pipeline.
+
+### 5. SEP-0007 Request-to-Pay Workflow
+**Feature:** Instant communal debt collection via standardized Stellar URIs.
+**Data Flow:**
+- **Input:** Total XLM / N People.
+- **Generation:** App calculates split and binds it to the current user's `publicKey`.
+- **Output:** A standardized `web+stellar:pay` link and a 160x160 QR code.
+- **Execution:** External users scan/click, their local wallet (LOBSTR/Freighter) intercepts the SEP-0007 protocol, and executes a pre-filled payment back to the operator.
 
 ---
 
