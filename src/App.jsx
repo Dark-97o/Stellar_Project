@@ -135,10 +135,10 @@ function App() {
     { id: 11, name: 'Vector Sky', priceUSD: 115, icon: '/img/nft/nft11.jpeg', owner: null, color: '#d4fc79' },
     { id: 12, name: '!900 Node', priceUSD: 350, icon: '/img/nft/nft12.jpeg', owner: null, color: '#330867' },
     { id: 13, name: 'Solaris Dark', priceUSD: 420, icon: '/img/nft/nft13.jpeg', owner: null, color: '#f093fb' },
-    { id: 14, name: 'Marshy 01', priceUSD: 175, icon: '/img/nft/nft14.jpeg', owner: null, color: '#5ee7df' },
-    { id: 15, name: 'Bio Human', priceUSD: 500, icon: '/img/nft/nft15.jpeg', owner: null, color: '#667eea' },
-    { id: 16, name: 'AutoMobi 90s', priceUSD: 800, icon: '/img/nft/nft16.jpeg', owner: null, color: '#00c6fb' },
-    { id: 17, name: 'Toasty', priceUSD: 1000, icon: '/img/nft/nft17.jpeg', owner: null, color: '#4facfe' },
+    { id: 14, name: 'Marshy 01', priceUSD: 1000, icon: '/img/nft/nft14.jpeg', owner: null, color: '#5ee7df' },
+    { id: 15, name: 'Bio Human', priceUSD: 1500, icon: '/img/nft/nft15.jpeg', owner: null, color: '#667eea' },
+    { id: 16, name: 'AutoMobi 90s', priceUSD: 670, icon: '/img/nft/nft16.jpeg', owner: null, color: '#00c6fb' },
+    { id: 17, name: 'Toasty', priceUSD: 420, icon: '/img/nft/nft17.jpeg', owner: null, color: '#4facfe' },
   ]);
   const [xlmPriceUSD, setXlmPriceUSD] = useState(0.166); // Calibrated to 6 XLM/$1
 
