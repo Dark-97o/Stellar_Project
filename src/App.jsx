@@ -19,6 +19,7 @@ import {
   invokeContractSellNft,
   invokeAdminFreeNft,
   invokeShopWithdraw,
+  invokeContractSetGoal,
   fetchNftOwner,
   fetchNftMetadata,
   SHOP_CONTRACT_ID,
@@ -121,10 +122,23 @@ function App() {
   const [txHash, setTxHash] = useState('');
   const [donationTxHash, setDonationTxHash] = useState('');
   const [nfts, setNfts] = useState([
-    { id: 1, name: 'Nexus Core', priceUSD: 45, icon: '💠', owner: null, color: '#4facfe' },
-    { id: 2, name: 'Void Pulse', priceUSD: 85, icon: '⚛️', owner: null, color: '#00f2fe' },
-    { id: 3, name: 'Stellar Gate', priceUSD: 250, icon: '🌌', owner: null, color: '#a18cd1' },
-    { id: 4, name: 'Data Ghost', priceUSD: 120, icon: '👻', owner: null, color: '#fbc2eb' },
+    { id: 1, name: 'Tricolor Liquid 1', priceUSD: 45, icon: '/img/nft/nft1.jpeg', owner: null, color: '#4facfe' },
+    { id: 2, name: 'White Food WGB', priceUSD: 85, icon: '/img/nft/nft2.jpeg', owner: null, color: '#00f2fe' },
+    { id: 3, name: 'Void Sky', priceUSD: 250, icon: '/img/nft/nft3.jpeg', owner: null, color: '#a18cd1' },
+    { id: 4, name: 'Sapphire Sky', priceUSD: 120, icon: '/img/nft/nft4.jpeg', owner: null, color: '#fbc2eb' },
+    { id: 5, name: 'Red Violet', priceUSD: 180, icon: '/img/nft/nft5.jpeg', owner: null, color: '#8ec5fc' },
+    { id: 6, name: 'Vibra Edible', priceUSD: 300, icon: '/img/nft/nft6.jpeg', owner: null, color: '#f9d423' },
+    { id: 7, name: 'Quantam View', priceUSD: 95, icon: '/img/nft/nft7.jpeg', owner: null, color: '#ff9a9e' },
+    { id: 8, name: 'Front Hall 67', priceUSD: 210, icon: '/img/nft/nft8.jpeg', owner: null, color: '#a1c4fd' },
+    { id: 9, name: 'Aether Sketch', priceUSD: 65, icon: '/img/nft/nft9.jpeg', owner: null, color: '#c2e9fb' },
+    { id: 10, name: 'Rail Road 2', priceUSD: 140, icon: '/img/nft/nft10.jpeg', owner: null, color: '#f6d365' },
+    { id: 11, name: 'Vector Sky', priceUSD: 115, icon: '/img/nft/nft11.jpeg', owner: null, color: '#d4fc79' },
+    { id: 12, name: '!900 Node', priceUSD: 350, icon: '/img/nft/nft12.jpeg', owner: null, color: '#330867' },
+    { id: 13, name: 'Solaris Dark', priceUSD: 420, icon: '/img/nft/nft13.jpeg', owner: null, color: '#f093fb' },
+    { id: 14, name: 'Marshy 01', priceUSD: 175, icon: '/img/nft/nft14.jpeg', owner: null, color: '#5ee7df' },
+    { id: 15, name: 'Bio Human', priceUSD: 500, icon: '/img/nft/nft15.jpeg', owner: null, color: '#667eea' },
+    { id: 16, name: 'AutoMobi 90s', priceUSD: 800, icon: '/img/nft/nft16.jpeg', owner: null, color: '#00c6fb' },
+    { id: 17, name: 'Toasty', priceUSD: 1000, icon: '/img/nft/nft17.jpeg', owner: null, color: '#4facfe' },
   ]);
   const [xlmPriceUSD, setXlmPriceUSD] = useState(0.166); // Calibrated to 6 XLM/$1
 
@@ -209,6 +223,21 @@ function App() {
     }
   };
 
+  const handleAdminSetGoal = async () => {
+    const newGoal = prompt("ENTER NEW PROTOCOL GOAL (XLM):", fundGoal);
+    if (!newGoal || isNaN(newGoal)) return;
+    setLoading(true);
+    try {
+      await invokeContractSetGoal(address, parseFloat(newGoal), (m, t) => log(m, t), walletType);
+      await syncAllData();
+      log(`PROTOCOL GOAL UPDATED TO ${newGoal} XLM.`, "ok");
+    } catch (err) {
+      log(`GOAL UPDATE FAILED: ${err.message}`, "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleShopWithdraw = async () => {
     const amt = prompt("ENTER AMOUNT TO WITHDRAW FROM SHOP TREASURY (XLM):");
     if (!amt || isNaN(amt)) return;
@@ -233,15 +262,13 @@ function App() {
   const isLoginRequired = !isLanding && !address;
   const displayPrompt = (showConnectPrompt || isLoginRequired) && !showWalletModal;
 
-  // Real Data States
   const [history, setHistory] = useState([]);
   const [fundTotal, setFundTotal] = useState(0);
   const [donors, setDonors] = useState([]);
   const [whales, setWhales] = useState([]);
-  const [hasAlerts, setHasAlerts] = useState(true); // Tactical alert simulation
+  const [hasAlerts, setHasAlerts] = useState(true);
   const [fundGoal, setFundGoal] = useState(10000);
 
-  // New Feature States
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [faucetLoading, setFaucetLoading] = useState(false);
   const [selectedNft, setSelectedNft] = useState(null);
@@ -249,11 +276,8 @@ function App() {
   const [batchProgress, setBatchProgress] = useState(0);
   const [shopBalance, setShopBalance] = useState('0.00');
   const [adminAddress, setAdminAddress] = useState(null);
-  const [splitMode, setSplitMode] = useState('single'); // 'single' or 'multi'
-  const [calcTotal, setCalcTotal] = useState('');
-  const [calcN, setCalcN] = useState(2);
   const [multiRecipients, setMultiRecipients] = useState([{ dest: '', amt: '' }]);
-  const [multiStatuses, setMultiStatuses] = useState([]); // per-recipient {state, hash}
+  const [multiStatuses, setMultiStatuses] = useState([]);
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -268,14 +292,13 @@ function App() {
     return `${addr.substring(0, start)}...${addr.slice(-end)}`;
   };
 
-  // Sync Interval
   useEffect(() => {
     const loadWhales = async () => {
       const data = await fetchNetworkWhales(log);
       setWhales(data);
     };
     loadWhales();
-    const interval = setInterval(loadWhales, 3600000); // Sync once per hour
+    const interval = setInterval(loadWhales, 3600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -303,11 +326,9 @@ function App() {
       setDonors(relief.donors);
       if (relief.admin) setAdminAddress(relief.admin);
 
-      // Sync Shop Balance
       const sb = await getXlmBalance(SHOP_CONTRACT_ID);
       setShopBalance(sb === "UPLINK_NOT_INITIALIZED" ? "0.00" : sb);
 
-      // Sync NFT Owners
       const updatedNfts = await Promise.all(nfts.map(async (nft) => {
         const owner = await fetchNftOwner(nft.id);
         return { ...nft, owner };
@@ -321,7 +342,6 @@ function App() {
     }
   };
 
-  /* ── LEVEL 2 WALLET ACTIONS ───────────────────────────────── */
   const handleConnect = () => {
     setShowConnectPrompt(true);
   };
@@ -354,7 +374,6 @@ function App() {
     log('UPLINK SEVERED BY OPERATOR.', 'info');
   };
 
-  /* ── TRANSACTION LIFECYCLE HANDLERS ─────────────────────── */
   const handleSend = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -387,11 +406,9 @@ function App() {
         log(`DONATION FINALIZED VIA CONTRACT.`, "ok");
       }
 
-      // Optimistic update: immediately show the donated amount in the progress bar
       setFundTotal(prev => parseFloat((prev + amount).toFixed(2)));
       log(`POOL UPDATED: +${amount} XLM. CONFIRMING ON-CHAIN IN 5s...`, "info");
 
-      // Confirmed sync after 5s to let Soroban RPC and contract storage settle
       setTimeout(() => syncAllData(), 5000);
     } catch (err) {
       log(`CONTRACT_ERR: ${err.message}`, "err");
@@ -428,7 +445,6 @@ function App() {
     }
   };
 
-  /* ── ADMIN DIAGNOSTICS HANDLERS ───────────────────────────────── */
   const handleAdminWithdraw = async (e) => {
     e.preventDefault();
     const dest = prompt("ENTER AUTHORIZED RECIPIENT ADDRESS (G...):");
@@ -476,13 +492,11 @@ function App() {
     const valid = multiRecipients.filter(r => r.dest.trim() && parseFloat(r.amt) > 0);
     if (!valid.length) { log('NO VALID RECIPIENTS CONFIGURED.', 'err'); return; }
     setLoading(true);
-    // Init all statuses as PENDING
     const initStatuses = valid.map(() => ({ state: 'pending', hash: null }));
     setMultiStatuses(initStatuses);
     setBatchProgress(0);
     log(`INITIATING BATCH UPLINK → ${valid.length} TARGETS...`, 'info');
 
-    // Fire all payments in parallel, capturing individual results
     const results = await Promise.allSettled(
       valid.map((r, i) =>
         sendPayment(address, r.dest, r.amt, (m, t) => log(`[${i + 1}/${valid.length}] ${m}`, t), walletType)
@@ -524,7 +538,6 @@ function App() {
     log(`CALCULATED SPLIT: ${splitAmt} XLM x ${n}`, "info");
   };
 
-  /* ── VIEW RENDERING ───────────────────────────────────────── */
   const renderContent = () => {
     switch (activeTab) {
       case 'terminal':
@@ -633,7 +646,6 @@ function App() {
                           }}
                           style={{ background: 'rgba(255,60,60,0.12)', border: '1px solid rgba(255,60,60,0.25)', color: '#ff6b6b', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', height: '100%' }}
                         >✕</button>
-                        {/* Per-recipient live status badge */}
                         {status ? (
                           status.state === 'pending' ? (
                             <span style={{ fontSize: '0.6rem', color: 'var(--yellow)', background: 'rgba(255,195,0,0.1)', border: '1px solid rgba(255,195,0,0.3)', borderRadius: '4px', padding: '0.2rem 0.4rem', textAlign: 'center' }}>⏳ PENDING</span>
@@ -1060,6 +1072,16 @@ function App() {
                       <button className="btn btn--ghost" onClick={handleShopWithdraw} disabled={loading}>WITHDRAW FEES</button>
                     </div>
                   </div>
+ 
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong>7. Protocol Goal Adjustment</strong>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Goal: <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{fundGoal} XLM</span></p>
+                      </div>
+                      <button className="btn btn--ghost" onClick={handleAdminSetGoal} disabled={loading}>SET GOAL</button>
+                    </div>
+                  </div>
                 </div>
 
               </div>
@@ -1079,14 +1101,24 @@ function App() {
 
                 <div className="shop-grid">
                   {nfts.map(nft => {
-                    const xlmCost = nft.priceUSD * 6; // Fixed contract rate for transparency
                     const isOwner = nft.owner === address;
-                    const isSold = nft.owner && !isOwner;
 
                     return (
                       <div key={nft.id} className="nft-card" onClick={() => setSelectedNft(nft)} style={{ cursor: 'pointer' }}>
                         <div className="nft-image-container" style={{ background: `radial-gradient(circle at center, ${nft.color}22 0%, #000 100%)` }}>
-                          <div style={{ fontSize: '4rem', filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.2))' }}>{nft.icon}</div>
+                          <img 
+                            src={nft.icon} 
+                            alt={nft.name} 
+                            style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              objectFit: 'cover', 
+                              filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.2))',
+                              transition: 'transform 0.3s'
+                            }} 
+                            onMouseEnter={e => e.target.style.transform = 'scale(1.1)'}
+                            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+                          />
                           {nft.owner && (
                             <div style={{
                               position: 'absolute', top: '10px', left: '10px',
@@ -1135,7 +1167,7 @@ function App() {
   };
 
   const handleGetStarted = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Ensure we zoom from the hero
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsZooming(true);
     setTimeout(() => {
       setIsLanding(false);
@@ -1260,7 +1292,6 @@ function App() {
                 <div className={`ham-line ${isMenuOpen ? 'ham-line--open' : ''}`} />
               </button>
 
-              {/* Compact Mobile Menu - Moved here for better anchoring */}
               <nav className={`nav-top-bar ${isMenuOpen ? 'nav-top-bar--open' : ''}`}>
                 <div className={`nav-item ${activeTab === 'terminal' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('terminal'); setIsMenuOpen(false); }}>Payments</div>
                 <div className={`nav-item ${activeTab === 'multipay' ? 'nav-item--active' : ''}`} onClick={() => { setActiveTab('multipay'); setIsMenuOpen(false); }}>Batch Transfer</div>
@@ -1288,7 +1319,6 @@ function App() {
 
         <main className="survivor-hub">
           <div className="bento-grid">
-            {/* ── LEFT COLUMN: Telemetry & Actions ── */}
             <div className="flex-col" style={{ gap: '1rem' }}>
               {address && (
                 <div className="card" style={{ padding: '1rem', textAlign: 'center' }}>
@@ -1300,7 +1330,6 @@ function App() {
                       {parseFloat(balance) >= 100000 ? '99999+' : parseFloat(balance).toLocaleString(undefined, { maximumFractionDigits: 0 })} <span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>XLM</span>
                     </div>
                   )}
-                  {/* Live Graph Mockup */}
                   <div style={{ marginTop: '1rem', height: '40px', width: '100%', position: 'relative' }}>
                     <svg viewBox="0 0 100 30" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
                       <defs>
@@ -1351,7 +1380,6 @@ function App() {
               </div>
             </div>
 
-            {/* ── CENTER COLUMN: Primary Interface ── */}
             <div className="flex-col" style={{ gap: '1.5rem' }}>
               {renderContent()}
             </div>
@@ -1377,7 +1405,6 @@ function App() {
             }}
             onClick={e => e.stopPropagation()}
           >
-            {/* LEFT 40% - IMAGE */}
             <div className="prompt-modal-left" style={{ background: '#000', position: 'relative', overflow: 'hidden' }}>
               <img
                 src="/img/person.jpg"
@@ -1391,7 +1418,6 @@ function App() {
               />
             </div>
 
-            {/* RIGHT 60% - CONTENT */}
             <div className="prompt-modal-right" style={{
               position: 'relative',
               display: 'flex',
@@ -1553,7 +1579,16 @@ function App() {
                 justifyContent: 'center',
                 position: 'relative'
               }}>
-                <div style={{ fontSize: '8rem', filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3))' }}>{selectedNft.icon}</div>
+                <img 
+                  src={selectedNft.icon} 
+                  alt={selectedNft.name} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                    filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.3))'
+                  }} 
+                />
                 <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
                   <button onClick={() => setSelectedNft(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%' }}>✕</button>
                 </div>

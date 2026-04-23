@@ -428,6 +428,18 @@ export const invokeContractSetActive = async (publicKey, isActive, onLog, wallet
   return await executeSorobanOperation(publicKey, op, onLog, walletType);
 };
 
+export const invokeContractSetGoal = async (publicKey, newGoalXlm, onLog, walletType) => {
+  onLog(`CRAFTING GOAL ADJUSTMENT (${newGoalXlm} XLM) UPLINK...`, "info");
+  const contract = new StellarSdk.Contract(CONTRACT_ID);
+  // Convert XLM to stroops (BigInt)
+  const stroops = BigInt(Math.floor(newGoalXlm * 10000000));
+  const op = contract.call(
+    "set_goal", 
+    StellarSdk.nativeToScVal(stroops, { type: "i128" })
+  );
+  return await executeSorobanOperation(publicKey, op, onLog, walletType);
+};
+
 export const invokeContractInit = async (publicKey, onLog, walletType) => {
   onLog("CRAFTING DOUBLE-INIT HIJACK UPLINK...", "warn");
   const contract = new StellarSdk.Contract(CONTRACT_ID);
