@@ -25,6 +25,9 @@ A decentralized payment terminal for the **Stellar Testnet** built with React + 
 - **🏦 Multi-Wallet Gateway** — Unified uplink supporting Freighter, Rabe, Hana, xBull, and Albedo
 - **⚡ Soroban Relief Protocol** — Direct smart contract interaction for decentralized relief funding
 - **🔔 Tactical Notifications** — Real-time red-dot alert system for critical system events
+- **🏪 On-Chain NFT Marketplace** — A decentralized bazaar for trading strategic assets with simulated USD-to-XLM conversion rates (Level 4).
+- **🛠️ Automated CI/CD** — Production-grade build and test pipelines using GitHub Actions.
+- **📱 Mobile-First Interface** — A completely redesigned, responsive terminal experience with a compact hamburger menu for small screens.
 - **🛡️ Error Boundary** — Graceful crash recovery with themed error screen
 
 ---
@@ -60,13 +63,26 @@ The **DONATE** module interfaces directly with a WASM-based smart contract on th
    - Prove Unauthorized `withdraw` functions trap the Wasm VM and reject theft.
    - Prove the Contract can be decentralized mapped to a new Admin safely.
 
-#### 3. Enterprise CI/CD Pipeline (Automation)
+#### 3. Relief Fund Architecture (Soroban Implementation)
+The **Stellar Relief Fund** is a non-custodial protocol that allows users to pool resources for communal goals.
+- **Contribution Pipeline**: User -> `TranscendenceContract.donate()` -> Soroban Auth -> Native XLM Transfer (via SAC) -> Global State Update.
+- **Withdrawal Governance**: Admin -> `TranscendenceContract.withdraw()` -> Verification -> Treasury Liquidation to target recipient.
+- **Event Streaming**: The contract publishes `DonationEvent` and `WithdrawalEvent` payloads, which the frontend captures via the `getEvents` RPC to update the live donor list.
+
+#### 4. Leaderboard Syncing (The Hunters Protocol)
+To ensure high-fidelity network data without exceeding RPC rate limits, the Hub uses a specialized **Hunters Protocol**:
+1. **Cache-First Layer**: Checks `sessionStorage` for valid telemetry data (TTL: 60m).
+2. **Tier 1 (StellarExpert)**: Fetches verified rich-list data for high-volume accounts.
+3. **Tier 2 (Discovery Engine)**: Scans the latest 50-100 ledger operations to identify active participants and audits their balances in real-time via Horizon.
+4. **Tier 3 (Fail-safe)**: Falls back to a hardcoded registry of verified network whales.
+
+#### 5. Enterprise CI/CD Pipeline (Automation)
 The project is integrated with a professional **GitHub Actions** pipeline (`main.yml`) that ensures code quality and deployment stability:
 - **Continuous Integration**: Automatically builds the React/Vite frontend on every push to `main`.
 - **Automated Testing**: Executes the contract test suite to verify protocol integrity before any code is merged.
 - **Environment Parity**: Ensures the production environment matches development builds by standardizing the Node.js environment.
 
-#### 4. Modular NFT Marketplace Architecture (Level 4 Upgrade)
+#### 6. Modular NFT Marketplace Architecture (Level 4)
 The Hub has transitioned to a multi-contract ecosystem using **Inter-Contract Calls (ICC)** to separate asset ownership from marketplace logic.
 - **`StellarNFT` (Asset)**: A standalone contract managing NFT minting, ownership, and metadata.
 - **`NFTShop` (Marketplace)**: Handles USD pricing logic, XLM-to-Stroop conversions, and contract-to-contract communication.
@@ -84,15 +100,15 @@ The Hub has transitioned to a multi-contract ecosystem using **Inter-Contract Ca
       S-->>U: Success Notification
   ```
 
-#### 5. Admin Governance: NFTG & Treasury Management
+#### 7. Admin Governance: Asset Release & Treasury
 Advanced administrative controls allow for full lifecycle management of the ecosystem:
-- **NFTG (NFT Release Protocol)**: A specialized "Asset Release" function allowing admins to reset or "free" NFTs that have been sold back to the shop, restocking the inventory.
+- **Asset Release Protocol**: A specialized function allowing admins to reset or "free" NFTs that have been sold back to the shop, restocking the inventory.
 - **Earnings Withdrawal**: Admins can securely take out accumulated XLM earnings (marketplace fees) from the `NFTShop` contract directly via the authorized Diagnostics Panel.
 
-#### 6. Mobile-First Responsive Overhaul
+#### 8. Mobile-First Responsive Overhaul
 The entire interface has been redesigned for accessibility on all device tiers:
 - **Compact Navigation**: A sleek, tactical hamburger menu for mobile users.
-- **Responsive Bento Grid**: Adaptive layout logic that reflows the Telemetry cards and Transaction history into a vertical stack on smaller screens while maintaining 100% density.
+- **Responsive Bento Grid**: Adaptive layout logic that reflows the Telemetry cards and Transaction history into a vertical stack on smaller screens.
 
 ---
 
@@ -254,23 +270,28 @@ https://github.com/user-attachments/assets/0df2d724-17d5-4614-9918-5c0a46ce9572
 
 ```
 Stellar_Project/
-├── TranscendenceContract/       # Soroban Smart Contract Source (Rust)
+├── .github/
+│   └── workflows/
+│       └── main.yml             # Enterprise CI/CD Pipeline
+├── TranscendenceContract/       # Soroban Workspace Root
 │   ├── contracts/
-│   │   └── hello-world/         # Core Relief Protocol logic
-│   └── Cargo.toml               # Workspace configuration
+│   │   ├── hello-world/         # Relief Fund Contract
+│   │   ├── nft-shop/            # Marketplace Contract (ICC)
+│   │   └── stellar-nft/         # NFT Standard Contract
+│   └── target/                  # Compiled WASM artifacts
 ├── public/
-│   └── dystopian-bg.png         # Background image
+│   ├── img/                     # Optimized Video & Image Assets
+│   └── favicon.svg              # System Icon
 ├── src/
-│   ├── assets/                  # Static assets & 3D Spline scenes
 │   ├── utils/
-│   │   ├── stellar.js           # Triple-tier logic & Discovery Engine
-│   │   └── kit.js               # Multi-wallet shim & abstraction
-│   ├── App.jsx                  # Tactical interface & tab routing
-│   ├── index.css                # Enterprise design system (Green-tier lights)
-│   └── main.jsx                 # Entry point
-├── index.html                   # HTML structure
-├── vite.config.js               # Build logic & polyfills
-└── README.md                    # Operational walkthrough
+│   │   ├── stellar.js           # Multi-tier Logic & SAC Queries
+│   │   └── kit.js               # Wallet Abstraction Layer
+│   ├── App.jsx                  # Primary React Controller & UI Routing
+│   ├── index.css                # Global Design System (Dystopian Theme)
+│   └── main.jsx                 # Application Bootstrap
+├── index.html                   # Entry Structure
+├── vite.config.js               # Build & Optimization Config
+└── README.md                    # Core Documentation
 ```
 
 ---
