@@ -278,6 +278,7 @@ function App() {
   const [adminAddress, setAdminAddress] = useState(null);
   const [multiRecipients, setMultiRecipients] = useState([{ dest: '', amt: '' }]);
   const [multiStatuses, setMultiStatuses] = useState([]);
+  const [modalOrigin, setModalOrigin] = useState({ x: 0, y: 0 });
 
   const logEnd = useRef(null);
   useEffect(() => { logEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -1104,7 +1105,18 @@ function App() {
                     const isOwner = nft.owner === address;
 
                     return (
-                      <div key={nft.id} className="nft-card" onClick={() => setSelectedNft(nft)} style={{ cursor: 'pointer' }}>
+                      <div 
+                        key={nft.id} 
+                        className="nft-card" 
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const startX = rect.left + rect.width / 2 - window.innerWidth / 2;
+                          const startY = rect.top + rect.height / 2 - window.innerHeight / 2;
+                          setModalOrigin({ x: startX, y: startY });
+                          setSelectedNft(nft);
+                        }} 
+                        style={{ cursor: 'pointer' }}
+                      >
                         <div className="nft-image-container" style={{ background: `radial-gradient(circle at center, ${nft.color}22 0%, #000 100%)` }}>
                           <img 
                             src={nft.icon} 
@@ -1567,7 +1579,18 @@ function App() {
         <div className="modal-overlay" onClick={() => setSelectedNft(null)}>
           <div
             className="modal-content card"
-            style={{ width: 600, padding: 0, overflow: 'hidden' }}
+            style={{ 
+              width: '95%', 
+              maxWidth: '700px', 
+              padding: 0, 
+              overflow: 'hidden', 
+              maxHeight: '90vh', 
+              display: 'flex', 
+              flexDirection: 'column',
+              '--start-x': `${modalOrigin.x}px`,
+              '--start-y': `${modalOrigin.y}px`,
+              animation: 'pop-from-card 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both'
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1602,7 +1625,7 @@ function App() {
                 )}
               </div>
 
-              <div style={{ padding: '2rem' }}>
+              <div style={{ padding: '2rem', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                   <div>
                     <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>{selectedNft.name}</h2>
